@@ -1,0 +1,11 @@
+version: '3'
+
+tasks:
+  download-images:
+    desc: "Download and process images from CSV"
+    vars:
+      input_file: "{{.INPUT_FILE | default \"/data/iiif-20240818-loadfile-images-short.csv\"}}"
+      offset: "{{.OFFSET | default \"0\"}}"
+      limit: "{{.LIMIT | default \"10\"}}"
+    cmds:
+      - python downloadImages_grp.py --input-file={{.input_file}} --offset={{.offset}} --limit={{.limit}}
