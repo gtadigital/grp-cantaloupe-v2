@@ -1,8 +1,14 @@
 version: '3'
 
 tasks:
+  default:
+    desc: Default task
+    cmds:
+      - task: download-data
+      - task: generate-csv
+      - task: download-images
 
-  download-digital-objects:
+  download-data:
     desc: "Download digital object xml files from easydb"
     vars:
       DOWNLOAD_WHAT: "all"
@@ -51,11 +57,27 @@ tasks:
           --downloadWhat {{.DOWNLOAD_WHAT}} \
           {{.CLI_ARGS}}
 
+  generate-csv:
+    desc: Extract data from XML and generate csv
+    vars:
+      MODULE: digital_object
+      XML_INPUT_FOLDER:
+        sh: echo "/data/source/$(echo "{{.MODULE}}" | awk '{print tolower($0)}')"
+      CSV_OUTPUT_FOLDER:
+        sh: echo "/data/csv"
+    cmds:
+      - echo "Extracting data and populating CSV..."
+      - mkdir -p {{.CSV_OUTPUT_FOLDER}}
+      - python extract_xml_to_csv.py {{.XML_INPUT_FOLDER}} {{.CSV_OUTPUT_FOLDER}}
+      - echo "Finished"
+
+
   download-images:
     desc: "Download and process images from CSV"
     vars:
-      input_file: "{{.INPUT_FILE | default \"/data/iiif-20240818-loadfile-images-short.csv\"}}"
-      offset: "{{.OFFSET | default \"0\"}}"
-      limit: "{{.LIMIT | default \"10\"}}"
+      INPUT_FILE: "{{.INPUT_FILE | default \"/data/CSV/id_url_table.csv\"}}"
+      OFFSET: "{{.OFFSET | default \"0\"}}"
+      LIMIT: "{{.LIMIT | default \"10\"}}"
     cmds:
-      - python downloadImages_grp.py --input-file={{.input_file}} --offset={{.offset}} --limit={{.limit}}
+      - echo "Using {{.INPUT_FILE}}, offset {{.OFFSET}}, limit {{.LIMIT}}"
+      - python downloadImages_grp.py --input-file={{.INPUT_FILE}} --offset={{.OFFSET}} --limit={{.LIMIT}}

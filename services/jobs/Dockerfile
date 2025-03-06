@@ -15,10 +15,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime
 
 RUN pip install --no-cache-dir \
+    lxml \
     requests \
     tqdm \
     pillow \
+    pytz \
+    pyshacl \
     python-dateutil \
+    rdflib \
+    tqdm \
     urllib3
 
 # Install Taskfile task runner (https://taskfile.dev)
