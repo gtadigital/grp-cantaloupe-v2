@@ -21,13 +21,22 @@ def extract_data_from_xml(xml_file):
 
         system_object_id = system_object_id.text.strip()
 
-        # Extract download_url
-        download_url_elem = root.find(".//ns:do_grpm_06/ns:do_digitalobject/ns:files/ns:file/ns:versions/ns:version[@name='original']/ns:download_url", NAMESPACE)
-        if download_url_elem is None:
-            print("!! There's no download_url")
-            return None
+        # Find all <version> elements inside <versions>
+        versions = root.findall(".//ns:do_grpm_06/ns:do_digitalobject/ns:files/ns:file/ns:versions/ns:version", NAMESPACE)
+        
+        # Select the first version that has <class>image</class>
+        download_url = None
+        for version in versions:
+            class_elem = version.find("ns:class", NAMESPACE)
+            if class_elem is not None and class_elem.text.strip() == "image":
+                download_url_elem = version.find("ns:download_url", NAMESPACE)
+                if download_url_elem is not None and download_url_elem.text.strip():
+                    download_url = download_url_elem.text.strip()
+                    break  # Stop at the first valid image version
 
-        download_url = download_url_elem.text.strip()
+        if not download_url:
+            print(f"!! No valid image download_url found in {xml_file}")
+            return None
 
         # Construct final ID
         final_id = f"https://resource.gta.arch.ethz.ch/digitalobject/cms-{system_object_id}"
