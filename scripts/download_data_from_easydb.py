@@ -2,14 +2,14 @@
 Script to download data from easydb GTA instance.
 
 Usage:
-    python download_data_from_easydb.py --login <login> --password <password> --path <path> [--limit <limit>]
+    python download_data_from_easydb.py --login <login> --password <password> --module <module> --path <path> --base_folder <base_folder> --filenamePrefix <filenamePrefix> --downloadWhat <downloadWhat>
 
 Arguments:
     --login: Login email for GTA instance account
     --password: Login password for GTA instance account
     --module: Name of the module to download items from
     --path: Folder where all downloaded files will be stored
-    --limit: Limit the number of items to download
+    --base_folder: Base folder where the object files and metadata file are saved
     --filenamePrefix: Prefix to use for the filenames of the XML files. Defaults to "item-"
     --downloadWhat: What data to download ("all", "update", or "sample"). Defaults to "update"
 """
@@ -122,7 +122,6 @@ def main(*, login, password, objecttype, base_folder, limit=None, filenamePrefix
         password (str): The EasyDB login password.
         objecttype (str): The type of objects to download (e.g., "person", "group").
         base_folder (str): The base folder path for storing downloaded data.
-        limit (int, optional): The maximum number of items to download. Defaults to None.
         filenamePrefix (str, optional): The prefix for generated filenames. Defaults to 'item-'.
         downloadWhat (str, optional): Specifies what to download ('update', 'all', or 'sample').
             - "all": Download all available data.
@@ -142,7 +141,6 @@ def main(*, login, password, objecttype, base_folder, limit=None, filenamePrefix
             password="password123",
             objecttype="person",
             base_folder="/data/source/",
-            limit=10,
             filenamePrefix="person-item-",
             downloadWhat="all"
         )
@@ -160,10 +158,15 @@ def main(*, login, password, objecttype, base_folder, limit=None, filenamePrefix
 
     metadata = ItemMetadata(download_path)
 
-    # Hardcoded `lastUpdated` for development or based on download mode
-    lastUpdated = '1970-01-01 00:00:00.000' if downloadWhat == "all" else '2024-09-01 00:00:00.000'
     # READ DATE FROM THE METADATA FILE
-    # lastUpdated = metadata.getLastUpdatedDate();
+    try:
+        lastUpdated = metadata.getLastUpdatedDate()
+    except:
+        lastUpdated = None
+    
+    # Set `lastUpdated` to '1970-01-01 00:00:00.000' if downloadWhat is "all" or if lastUpdated does not exist yet
+    if downloadWhat == "all" or lastUpdated is None:
+        lastUpdated = '1970-01-01 00:00:00.000'
 
     print(f'lastUpdated: {lastUpdated}')
     
@@ -172,12 +175,7 @@ def main(*, login, password, objecttype, base_folder, limit=None, filenamePrefix
     downloadStarted = downloadStarted_utc.strftime('%Y-%m-%d %H:%M:%S.000')
     print(f'downloadStarted: {downloadStarted}')
     
-    # Run the appropriate pipeline based on `downloadWhat`
-    if downloadWhat == "sample":
-        from utils.easydb_sample import run_export_pipeline as sample_run_export_pipeline
-        sample_run_export_pipeline(ezdb, objecttype, lastUpdated, download_path, limit, metadata, filenamePrefix)
-    else:
-        run_export_pipeline(ezdb, objecttype, lastUpdated, download_path, limit, metadata, filenamePrefix)   
+    run_export_pipeline(ezdb, objecttype, lastUpdated, download_path, limit, metadata, filenamePrefix)   
     
     # Update metadata with the current download start time
     metadata.setLastUpdated(downloadStarted)
@@ -196,17 +194,13 @@ if __name__ == "__main__":
     parser.add_argument('--password', required=True,help='password for login on EasyDB portal')
     parser.add_argument('--module',required=True, help='name of the module to download items from')
     parser.add_argument('--base_folder',required=True, help='base folder')
-    parser.add_argument('--limit', required=False, default=None, help='Limit the number of items to download')
     parser.add_argument('--filenamePrefix', required= False, help='Prefix to use for the filenames of the XML files. Defaults to "item-"')
     parser.add_argument('--downloadWhat', required=False, default=None, help='Which data to download ("all", "update", or "sample")')
     
     args = parser.parse_args()
-    print(args)
     login = args.login
     password = args.password
     module = args.module
     base_folder = args.base_folder
 
-    limit = int(args.limit) if args.limit else None
-
-    main(login=login, password=password, objecttype=module, base_folder=base_folder, limit=limit, filenamePrefix=args.filenamePrefix or 'item-', downloadWhat=args.downloadWhat or "update")
+    main(login=login, password=password, objecttype=module, base_folder=base_folder, filenamePrefix=args.filenamePrefix or 'item-', downloadWhat=args.downloadWhat or "update")
