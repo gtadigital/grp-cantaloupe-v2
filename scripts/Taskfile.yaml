@@ -77,7 +77,7 @@ tasks:
     vars:
       INPUT_FILE: "{{.INPUT_FILE | default \"/data/CSV/id_url_table.csv\"}}"
       OFFSET: "{{.OFFSET | default \"0\"}}"
-      LIMIT: "{{.LIMIT | default \"10\"}}" # default limit in the python script 999999
+      LIMIT: "{{.LIMIT | default \"999999\"}}" # default limit in the python script 999999
     cmds:
       - echo "Using {{.INPUT_FILE}}, offset {{.OFFSET}}, limit {{.LIMIT}}"
       - python downloadImages_grp.py --input-file={{.INPUT_FILE}} --offset={{.OFFSET}} --limit={{.LIMIT}}
