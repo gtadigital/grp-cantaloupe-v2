@@ -4,14 +4,26 @@ tasks:
   default:
     desc: Default task
     cmds:
-      - task: download-data
+      - task: update-data
       - task: generate-csv
       - task: download-images
 
-  download-data:
+  download-all-data:
     desc: "Download digital object xml files from easydb"
     vars:
       DOWNLOAD_WHAT: "all"
+    cmds:
+      - for:
+        - digital_object
+        task: _download-module-items-from-easydb
+        vars:
+          MODULE: "{{.ITEM}}"
+          DOWNLOAD_WHAT: "{{.DOWNLOAD_WHAT}}"
+
+  update-data:
+    desc: Update data from EasyDB
+    vars: 
+      DOWNLOAD_WHAT: "update"
     cmds:
       - for:
         - digital_object
