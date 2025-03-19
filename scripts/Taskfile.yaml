@@ -1,0 +1,95 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Default task
+    cmds:
+      - task: update-data
+      - task: generate-csv
+      - task: download-images
+
+  download-all-data:
+    desc: "Download digital object xml files from easydb"
+    vars:
+      DOWNLOAD_WHAT: "all"
+    cmds:
+      - for:
+        - digital_object
+        task: _download-module-items-from-easydb
+        vars:
+          MODULE: "{{.ITEM}}"
+          DOWNLOAD_WHAT: "{{.DOWNLOAD_WHAT}}"
+
+  update-data:
+    desc: Update data from EasyDB
+    vars: 
+      DOWNLOAD_WHAT: "update"
+    cmds:
+      - for:
+        - digital_object
+        task: _download-module-items-from-easydb
+        vars:
+          MODULE: "{{.ITEM}}"
+          DOWNLOAD_WHAT: "{{.DOWNLOAD_WHAT}}"
+
+  _download-module-items-from-easydb:
+    desc: Download data from EasyDB per module
+    internal: true
+    requires:
+      vars: [MODULE, DOWNLOAD_WHAT]
+    vars:
+      FOLDER:
+        sh: echo "/data/source/$(echo "{{.MODULE}}" | awk '{print tolower($0)}')"
+      FILENAMEPREFIX:
+        sh: echo "$(echo "{{.MODULE}}" | awk '{print tolower($0)}')-item-"
+    cmds:
+      - echo "Downloading {{.MODULE}} items from easydb"
+      - mkdir -p {{.FOLDER}}
+      - task: _download-items-from-easydb
+        vars:
+          MODULE: "{{.MODULE}}"
+          OUTPUT_FOLDER: "{{.FOLDER}}"
+          DOWNLOAD_WHAT: "{{.DOWNLOAD_WHAT}}"
+          FILENAMEPREFIX: "{{.FILENAMEPREFIX}}"
+
+
+  _download-items-from-easydb:
+    internal: true
+    requires:
+      vars: [MODULE, OUTPUT_FOLDER, FILENAMEPREFIX, DOWNLOAD_WHAT]
+    interactive: True
+    cmds:
+      - |
+        python download_data_from_easydb.py \
+          --login {{.LOGIN}} \
+          --password {{.PASSWORD}} \
+          --module {{.MODULE}} \
+          --base_folder /data/source/ \
+          --filenamePrefix {{.FILENAMEPREFIX}} \
+          --downloadWhat {{.DOWNLOAD_WHAT}} \
+          {{.CLI_ARGS}}
+
+  generate-csv:
+    desc: Extract data from XML and generate csv
+    vars:
+      MODULE: digital_object
+      XML_INPUT_FOLDER:
+        sh: echo "/data/source/$(echo "{{.MODULE}}" | awk '{print tolower($0)}')"
+      CSV_OUTPUT_FOLDER:
+        sh: echo "/data/csv"
+    cmds:
+      - echo "Extracting data and populating CSV..."
+      - mkdir -p {{.CSV_OUTPUT_FOLDER}}
+      - python extract_xml_to_csv.py {{.XML_INPUT_FOLDER}} {{.CSV_OUTPUT_FOLDER}}
+      - echo "Finished"
+
+
+  download-images:
+    desc: "Download and process images from CSV"
+    vars:
+      INPUT_FILE: "{{.INPUT_FILE | default \"/data/CSV/id_url_table.csv\"}}"
+      OFFSET: "{{.OFFSET | default \"0\"}}"
+      LIMIT: "{{.LIMIT | default \"999999\"}}" # default limit in the python script 999999
+    cmds:
+      - echo "Using {{.INPUT_FILE}}, offset {{.OFFSET}}, limit {{.LIMIT}}"
+      - python downloadImages_grp.py --input-file={{.INPUT_FILE}} --offset={{.OFFSET}} --limit={{.LIMIT}}
