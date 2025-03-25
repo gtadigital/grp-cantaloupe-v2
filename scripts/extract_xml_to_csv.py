@@ -21,10 +21,9 @@ def extract_data_from_xml(xml_file):
 
         system_object_id = system_object_id.text.strip()
 
-        # Find all <version> elements inside <versions>
-        versions = root.findall(".//ns:do_grpm_06/ns:do_digitalobject/ns:files/ns:file/ns:versions/ns:version", NAMESPACE)
+        # Find all <version> elements inside <versions> with @name='original'
+        versions = root.findall(".//ns:do_grpm_06/ns:do_digitalobject/ns:files/ns:file/ns:versions/ns:version[@name='original']", NAMESPACE)
         
-        # Select the first version that has <class>image</class>
         download_url = None
         for version in versions:
             class_elem = version.find("ns:class", NAMESPACE)
