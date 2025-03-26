@@ -61,6 +61,16 @@ class ItemMetadata:
             return self.metadata['files'][filename]['lastUpdated']
         else:
             return None
+    
+    def getLatestImageDownloadUrlForFile(self, filename):
+        """
+        Get the latest image download url from the metadata file for a specific filename.
+        The latest image download url is stored in the key 'lastImageDownloadUrl' in the for the given filename in the 'files' key.
+        """
+        if 'files' in self.metadata and filename in self.metadata['files'] and 'lastImageDownloadUrl' in self.metadata['files'][filename]:
+            return self.metadata['files'][filename]['lastImageDownloadUrl']
+        else:
+            return None
 
     def getLastUpdatedDate(self):
         """
@@ -182,6 +192,24 @@ class ItemMetadata:
         elif isinstance(lastUpdated, datetime):
             # self.metadata['files'][filename] = lastUpdated.strftime('%Y-%m-%dT%H:%M:%S.%f')
             self.metadata['files'][filename] = lastUpdated.strftime('%Y-%m-%d %H:%M:%S.000')
+        if write:
+            self.writeMetadata()
+    def setLatestImageDownloadUrlForFile(self, filename, latestImageDownloadUrl, *, write=True):
+        """
+        Set the latest image download url for a specific file.
+        Adds the key 'files' to the metadata if it does not exist yet.
+        Adds the key 'filename' to the 'files' key if it does not exist yet.
+
+        args:
+            filename (str): The filename of the file to set the last updated date for
+            latestImageDownloadUrl (str): The latest image download url to set
+        """
+        if not 'files' in self.metadata:
+            self.metadata['files'] = {}
+        if not filename in self.metadata['files']:
+            self.metadata['files'][filename] = {}
+        if isinstance(latestImageDownloadUrl, str):
+            self.metadata['files'][filename]['latestImageDownloadUrl'] = latestImageDownloadUrl
         if write:
             self.writeMetadata()
 
