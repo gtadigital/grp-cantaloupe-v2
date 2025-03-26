@@ -21,10 +21,9 @@ def extract_data_from_xml(xml_file):
 
         system_object_id = system_object_id.text.strip()
 
-        # Find all <version> elements inside <versions>
-        versions = root.findall(".//ns:do_grpm_06/ns:do_digitalobject/ns:files/ns:file/ns:versions/ns:version", NAMESPACE)
+        # Find all <version> elements inside <versions> with @name='original'
+        versions = root.findall(".//ns:do_grpm_06/ns:do_digitalobject/ns:files/ns:file/ns:versions/ns:version[@name='original']", NAMESPACE)
         
-        # Select the first version that has <class>image</class>
         download_url = None
         for version in versions:
             class_elem = version.find("ns:class", NAMESPACE)
@@ -39,9 +38,11 @@ def extract_data_from_xml(xml_file):
             return None
 
         # Construct final ID
-        final_id = f"https://resource.gta.arch.ethz.ch/digitalobject/cms-{system_object_id}"
+        cms_id_url = f"https://resource.gta.arch.ethz.ch/digitalobject/cms-{system_object_id}"
+        
+        filename = xml_file.rsplit('/', 1)[-1]  # Takes the element after the last slash
 
-        return final_id, download_url
+        return cms_id_url, download_url, filename
 
     except Exception as e:
         print(f"Error processing {xml_file}: {e}")
@@ -54,7 +55,7 @@ def process_directory(input_dir, output_dir):
     output_csv = os.path.join(output_dir, filename)
     with open(output_csv, mode="w", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
-        writer.writerow(["id", "image"])  # Write header
+        writer.writerow(["cms_id_url", "image_url", "filename"])  # Write header
 
         for filename in os.listdir(input_dir):
             if filename.endswith(".xml"):

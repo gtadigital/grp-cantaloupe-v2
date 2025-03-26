@@ -156,7 +156,7 @@ def main(*, login, password, objecttype, base_folder, limit=None, filenamePrefix
     print("base_folder:", base_folder)
     print("path:", download_path)
 
-    metadata = ItemMetadata(download_path)
+    metadata = ItemMetadata(base_folder)
 
     # READ DATE FROM THE METADATA FILE
     try:
