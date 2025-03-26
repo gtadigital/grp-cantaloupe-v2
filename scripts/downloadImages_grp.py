@@ -10,6 +10,7 @@ from PIL import Image
 PIL.Image.MAX_IMAGE_PIXELS = 933120000
 from io import BytesIO
 from tqdm import tqdm
+from lib.Metadata import ItemMetadata
 
 # Set up argument parser
 parser = argparse.ArgumentParser(description="Download and process images from a CSV file.")
@@ -20,11 +21,13 @@ parser.add_argument('--limit', type=int, default=999999, help="Limit for image p
 args = parser.parse_args()
 
 # Assign variables from parsed arguments
-imageFileName = args.input_file  # Image file CSV name
+csvFileName = args.input_file  # Image file CSV name
 csvFolder = "/data/"
-imageFile = os.path.join(csvFolder, imageFileName)
+csvFile = os.path.join(csvFolder, csvFileName)
 offset = args.offset
 limit = args.limit
+
+metadata = ItemMetadata("/data/source")
 
 # Accepted image file extensions
 accepted_exts = ('.png', '.jpg', '.jpeg', '.tif', '.bmp', '.gif')
@@ -34,71 +37,69 @@ parentFolder = '/images'
 
 # Last part to be removed (only for debugging)
 date = str(datetime.date.today().strftime('%Y_%m_%d')) + ""
-subFolder_tmp = date
+# subFolder_tmp = date
 
 maxRetries = 3
 
 data = []
 
 # Read CSV file
-with open(imageFile, 'r') as f:
+with open(csvFile, 'r') as f:
     reader = csv.DictReader(f)
     for row in reader:
         data.append(row)
 
-print("The number of entries in " + imageFileName + " is", len(data))  # Number of entries in the CSV
+print("The number of entries in " + csvFileName + " is", len(data))  # Number of entries in the CSV
 
 toDBFile = 'to_db_%s.csv' % (date)
 
 with open(toDBFile, 'w') as g:
     writer = csv.writer(g)
 
-    counter = 0
-    n = 0
-
     for row in tqdm(data[offset:offset + limit]):
-        id = row['id'].rsplit('/', 1)[-1]  # Takes the element after the last slash
-        print(id)
-        url = row['image']
+        cms_id_url = row['cms_id_url'].rsplit('/', 1)[-1]  # Takes the element after the last slash
+        print(cms_id_url)
+        csv_url = row['image_url']
+        filename = row["filename"]
+        
+        latestImageDownloadUrl = metadata.getLatestImageDownloadUrlForFile(filename)
 
-        if (counter % 300) == 0:  # Create a new directory for every 300 images
-            n += 1
-        counter += 1
-
-        subFolder = (subFolder_tmp + "_%i") % n
-        directory = os.path.join(parentFolder, subFolder)
+        directory = os.path.join(parentFolder)
         os.makedirs(directory, exist_ok=True)
 
-        outputFile = '%s/%s.tif' % (directory, id)
+        outputFile = '%s/%s.tif' % (directory, cms_id_url)
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0'
         }
 
         # Check if the file is an image
-        if not url.lower().endswith(accepted_exts):
-            print(id, url, "is not an image")
+        if not csv_url.lower().endswith(accepted_exts):
+            print(cms_id_url, csv_url, "is not an image")
 
         # Check if file exists
-        elif not os.path.isfile(outputFile):
-            r = requests.get(url, allow_redirects=True, headers=headers)
+        # elif not os.path.isfile(outputFile):
+        
+        elif (csv_url != latestImageDownloadUrl):
+            r = requests.get(csv_url, allow_redirects=True, headers=headers)
             retries = 1
             while 'image' not in r.headers['Content-Type'] and retries <= maxRetries:
                 # Try again if no image comes back
                 time.sleep(1)
-                r = requests.get(url, allow_redirects=True, headers=headers)
+                r = requests.get(csv_url, allow_redirects=True, headers=headers)
                 retries += 1
 
             if retries >= maxRetries:
-                print("Could not download", id, url)
+                print("Could not download", cms_id_url, csv_url)
 
             else:
                 img = Image.open(BytesIO(r.content))
                 img.save(outputFile, 'TIFF')
 
                 # line = [id, subFolder]
-                line = [id + '.tif', directory + '/' + id + '.tif']
-                print(id, subFolder)
+                line = [cms_id_url + '.tif', directory + '/' + cms_id_url + '.tif']
+                # print(id, subFolder)
                 # Only save unique information in the database
                 # .tif extension to be appended in delegate script
                 # parent folder and full image name to be created as well in delegate script
                 writer.writerow(line)
+                metadata.setLatestImageDownloadUrlForFile(filename, csv_url)
