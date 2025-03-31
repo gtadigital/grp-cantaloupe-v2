@@ -94,3 +94,6 @@ with open(toDBFile, 'w') as g:
                 line = [_id + '.tif', directory + '/' + _id + '.tif']
                 writer.writerow(line)
                 metadata.setLatestImageDownloadUrlForFile(xml_filename, csv_url)
+        else:
+            print("Image already downloaded", _id, csv_url)
+    print("The file %s has been created." % (toDBFile))
