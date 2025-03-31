@@ -37,7 +37,6 @@ parentFolder = '/images'
 
 # Last part to be removed (only for debugging)
 date = str(datetime.date.today().strftime('%Y_%m_%d')) + ""
-# subFolder_tmp = date
 
 maxRetries = 3
 
@@ -57,27 +56,24 @@ with open(toDBFile, 'w') as g:
     writer = csv.writer(g)
 
     for row in tqdm(data[offset:offset + limit]):
-        cms_id_url = row['cms_id_url'].rsplit('/', 1)[-1]  # Takes the element after the last slash
-        print(cms_id_url)
+        _id = row['filename'].rsplit('/', 1)[-1]  # Takes the element after the last slash
+        print(_id)
         csv_url = row['image_url']
-        filename = row["filename"]
+        xml_filename = row["filename"]
         
-        latestImageDownloadUrl = metadata.getLatestImageDownloadUrlForFile(filename)
+        latestImageDownloadUrl = metadata.getLatestImageDownloadUrlForFile(xml_filename)
 
         directory = os.path.join(parentFolder)
         os.makedirs(directory, exist_ok=True)
 
-        outputFile = '%s/%s.tif' % (directory, cms_id_url)
+        outputFile = '%s/%s.tif' % (directory, _id)
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0'
         }
 
         # Check if the file is an image
         if not csv_url.lower().endswith(accepted_exts):
-            print(cms_id_url, csv_url, "is not an image")
-
-        # Check if file exists
-        # elif not os.path.isfile(outputFile):
+            print(_id, csv_url, "is not an image")
         
         elif (csv_url != latestImageDownloadUrl):
             r = requests.get(csv_url, allow_redirects=True, headers=headers)
@@ -89,17 +85,12 @@ with open(toDBFile, 'w') as g:
                 retries += 1
 
             if retries >= maxRetries:
-                print("Could not download", cms_id_url, csv_url)
+                print("Could not download", _id, csv_url)
 
             else:
                 img = Image.open(BytesIO(r.content))
                 img.save(outputFile, 'TIFF')
 
-                # line = [id, subFolder]
-                line = [cms_id_url + '.tif', directory + '/' + cms_id_url + '.tif']
-                # print(id, subFolder)
-                # Only save unique information in the database
-                # .tif extension to be appended in delegate script
-                # parent folder and full image name to be created as well in delegate script
+                line = [_id + '.tif', directory + '/' + _id + '.tif']
                 writer.writerow(line)
-                metadata.setLatestImageDownloadUrlForFile(filename, csv_url)
+                metadata.setLatestImageDownloadUrlForFile(xml_filename, csv_url)
