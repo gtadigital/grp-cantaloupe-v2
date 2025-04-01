@@ -6,6 +6,7 @@ import os
 import datetime
 import argparse
 import PIL
+import pillow_heif
 from PIL import Image
 PIL.Image.MAX_IMAGE_PIXELS = 933120000
 from io import BytesIO
@@ -30,7 +31,7 @@ limit = args.limit
 metadata = ItemMetadata("/data/source")
 
 # Accepted image file extensions
-accepted_exts = ('.png', '.jpg', '.jpeg', '.tif', '.bmp', '.gif')
+accepted_exts = ('.png', '.jpg', '.jpeg', '.tif', '.bmp', '.gif', '.heic')
 
 # Parent directory where images will be saved
 parentFolder = '/images'
@@ -62,7 +63,7 @@ with open(toDBFile, 'w') as g:
         
         latestImageDownloadUrl = metadata.getLatestImageDownloadUrlForFile(xml_filename)
 
-        directory = os.path.join(parentFolder)
+        directory = parentFolder # no subfolders
         os.makedirs(directory, exist_ok=True)
 
         outputFile = '%s/cms-%s.tif' % (directory, _id)
@@ -73,26 +74,56 @@ with open(toDBFile, 'w') as g:
         # Check if the file is an image
         if not csv_url.lower().endswith(accepted_exts):
             print(_id, csv_url, "is not an image")
+            continue
         
-        elif (csv_url != latestImageDownloadUrl):
-            r = requests.get(csv_url, allow_redirects=True, headers=headers)
-            retries = 1
-            while 'image' not in r.headers['Content-Type'] and retries <= maxRetries:
-                # Try again if no image comes back
-                time.sleep(1)
-                r = requests.get(csv_url, allow_redirects=True, headers=headers)
-                retries += 1
-
-            if retries >= maxRetries:
-                print("Could not download", _id, csv_url)
-
-            else:
-                img = Image.open(BytesIO(r.content))
-                img.save(outputFile, 'TIFF')
-
-                line = ['cms-' + _id + '.tif', directory + '/cms-' + _id + '.tif']
-                writer.writerow(line)
-                metadata.setLatestImageDownloadUrlForFile(xml_filename, csv_url)
-        else:
+        # If the download URL hasn't changed, skip downloading
+        if csv_url == latestImageDownloadUrl:
             print("Image already downloaded", _id, csv_url)
+            continue
+                
+        r = requests.get(csv_url, allow_redirects=True, headers=headers)
+        retries = 1
+        while 'image' not in r.headers['Content-Type'] and retries <= maxRetries:
+            # Try again if no image comes back
+            time.sleep(1)
+            r = requests.get(csv_url, allow_redirects=True, headers=headers)
+            retries += 1
+
+        if retries >= maxRetries:
+            print("Could not download", _id, csv_url)
+            continue
+
+        # Process image: if it's HEIC, convert using pillow-heif; otherwise use Image.open
+        if csv_url.lower().endswith('.heic'):
+            try:
+                heif_file = pillow_heif.read_heif(BytesIO(r.content))
+                img = Image.frombytes(
+                    heif_file.mode,
+                    heif_file.size,
+                    heif_file.data,
+                    "raw",
+                    heif_file.mode,
+                    heif_file.stride,
+                )
+            except Exception as e:
+                print("Error processing HEIC image", _id, e)
+                continue
+        else:
+            try:
+                img = Image.open(BytesIO(r.content))
+            except Exception as e:
+                print("Error opening image", _id, e)
+                continue
+        
+        try:
+            img.save(outputFile, 'TIFF')
+        except Exception as e:
+            print("Error saving image", _id, e)
+            continue
+
+        line = ['cms-' + _id + '.tif', directory + '/cms-' + _id + '.tif']
+        writer.writerow(line)
+        metadata.setLatestImageDownloadUrlForFile(xml_filename, csv_url)
+        print(f"Downloaded and saved image cms-{_id}.tif")
+        
     print("The file %s has been created." % (toDBFile))
