@@ -65,10 +65,10 @@ class ItemMetadata:
     def getLatestImageDownloadUrlForFile(self, filename):
         """
         Get the latest image download url from the metadata file for a specific filename.
-        The latest image download url is stored in the key 'lastImageDownloadUrl' in the for the given filename in the 'files' key.
+        The latest image download url is stored in the key 'latestImageDownloadUrl' in the for the given filename in the 'files' key.
         """
-        if 'files' in self.metadata and filename in self.metadata['files'] and 'lastImageDownloadUrl' in self.metadata['files'][filename]:
-            return self.metadata['files'][filename]['lastImageDownloadUrl']
+        if 'files' in self.metadata and filename in self.metadata['files'] and 'latestImageDownloadUrl' in self.metadata['files'][filename]:
+            return self.metadata['files'][filename]['latestImageDownloadUrl']
         else:
             return None
 

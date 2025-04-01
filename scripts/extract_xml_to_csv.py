@@ -14,12 +14,12 @@ def extract_data_from_xml(xml_file):
         root = tree.getroot()
 
         # Extract _system_object_id
-        system_object_id = root.find(".//ns:do_grpm_06/ns:_system_object_id", NAMESPACE)
-        if system_object_id is None:
-            print("!! There's no system_object_id", xml_file)
+        _id = root.find(".//ns:do_grpm_06/ns:_id", NAMESPACE)
+        if _id is None:
+            print("!! There's no _id", xml_file)
             return None
 
-        system_object_id = system_object_id.text.strip()
+        _id = _id.text.strip()
 
         # Find all <version> elements inside <versions> with @name='original'
         versions = root.findall(".//ns:do_grpm_06/ns:do_digitalobject/ns:files/ns:file/ns:versions/ns:version[@name='original']", NAMESPACE)
@@ -36,13 +36,10 @@ def extract_data_from_xml(xml_file):
         if not download_url:
             print(f"!! No valid image download_url found in {xml_file}")
             return None
-
-        # Construct final ID
-        cms_id_url = f"https://resource.gta.arch.ethz.ch/digitalobject/cms-{system_object_id}"
         
         filename = xml_file.rsplit('/', 1)[-1]  # Takes the element after the last slash
 
-        return cms_id_url, download_url, filename
+        return _id, download_url, filename
 
     except Exception as e:
         print(f"Error processing {xml_file}: {e}")
@@ -55,7 +52,7 @@ def process_directory(input_dir, output_dir):
     output_csv = os.path.join(output_dir, filename)
     with open(output_csv, mode="w", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
-        writer.writerow(["cms_id_url", "image_url", "filename"])  # Write header
+        writer.writerow(["_id", "image_url", "filename"])  # Write header
 
         for filename in os.listdir(input_dir):
             if filename.endswith(".xml"):
