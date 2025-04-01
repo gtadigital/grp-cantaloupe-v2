@@ -56,8 +56,7 @@ with open(toDBFile, 'w') as g:
     writer = csv.writer(g)
 
     for row in tqdm(data[offset:offset + limit]):
-        _id = row['filename'].rsplit('/', 1)[-1]  # Takes the element after the last slash
-        print(_id)
+        _id = row['_id']
         csv_url = row['image_url']
         xml_filename = row["filename"]
         
@@ -66,7 +65,7 @@ with open(toDBFile, 'w') as g:
         directory = os.path.join(parentFolder)
         os.makedirs(directory, exist_ok=True)
 
-        outputFile = '%s/%s.tif' % (directory, _id)
+        outputFile = '%s/cms-%s.tif' % (directory, _id)
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0'
         }
@@ -91,7 +90,7 @@ with open(toDBFile, 'w') as g:
                 img = Image.open(BytesIO(r.content))
                 img.save(outputFile, 'TIFF')
 
-                line = [_id + '.tif', directory + '/' + _id + '.tif']
+                line = ['cms-' + _id + '.tif', directory + '/cms-' + _id + '.tif']
                 writer.writerow(line)
                 metadata.setLatestImageDownloadUrlForFile(xml_filename, csv_url)
         else:
