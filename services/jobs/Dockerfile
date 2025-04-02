@@ -24,7 +24,8 @@ RUN pip install --no-cache-dir \
     python-dateutil \
     rdflib \
     tqdm \
-    urllib3
+    urllib3 \
+    pillow-heif
 
 # Install Taskfile task runner (https://taskfile.dev)
 RUN sh -c "$(curl -sSL https://taskfile.dev/install.sh)" -- -d
