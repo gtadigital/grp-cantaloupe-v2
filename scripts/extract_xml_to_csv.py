@@ -8,12 +8,12 @@ import argparse
 NAMESPACE = {'ns': '*'}
 
 def extract_data_from_xml(xml_file):
-    """Extract _system_object_id and download_url from an XML file."""
+    """Extract _id and download_url from an XML file."""
     try:
         tree = ET.parse(xml_file)
         root = tree.getroot()
 
-        # Extract _system_object_id
+        # Extract _id
         _id = root.find(".//ns:do_grpm_06/ns:_id", NAMESPACE)
         if _id is None:
             print("!! There's no _id", xml_file)
@@ -24,6 +24,7 @@ def extract_data_from_xml(xml_file):
         # Find all <version> elements inside <versions> with @name='original'
         versions = root.findall(".//ns:do_grpm_06/ns:do_digitalobject/ns:files/ns:file/ns:versions/ns:version[@name='original']", NAMESPACE)
         
+        # Find the first <version> element with <class> = "image" and extract the <download_url> element
         download_url = None
         for version in versions:
             class_elem = version.find("ns:class", NAMESPACE)
@@ -37,7 +38,8 @@ def extract_data_from_xml(xml_file):
             print(f"!! No valid image download_url found in {xml_file}")
             return None
         
-        filename = xml_file.rsplit('/', 1)[-1]  # Takes the element after the last slash
+        # Takes the element after the last slash
+        filename = xml_file.rsplit('/', 1)[-1]
 
         return _id, download_url, filename
 
@@ -57,6 +59,7 @@ def process_directory(input_dir, output_dir):
         for filename in os.listdir(input_dir):
             if filename.endswith(".xml"):
                 file_path = os.path.join(input_dir, filename)
+                # Process XML file
                 extracted_data = extract_data_from_xml(file_path)
 
                 if extracted_data:

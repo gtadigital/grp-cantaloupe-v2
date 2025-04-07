@@ -1,17 +1,35 @@
 """
-Script to download data from easydb GTA instance.
+Download and format XML data from an EasyDB GTA instance.
+
+This script authenticates with the EasyDB system, downloads item data from a specific module 
+(e.g., 'person', 'group'), saves the data as XML files, and formats the files by cleaning 
+unwanted attributes. It also updates metadata for future sync operations.
 
 Usage:
-    python download_data_from_easydb.py --login <login> --password <password> --module <module> --path <path> --base_folder <base_folder> --filenamePrefix <filenamePrefix> --downloadWhat <downloadWhat>
+    python download_data_from_easydb.py --login <login> --password <password> \
+        --module <module_name> --base_folder <folder> [--filenamePrefix <prefix>] [--downloadWhat <type>]
 
 Arguments:
-    --login: Login email for GTA instance account
-    --password: Login password for GTA instance account
-    --module: Name of the module to download items from
-    --path: Folder where all downloaded files will be stored
-    --base_folder: Base folder where the object files and metadata file are saved
-    --filenamePrefix: Prefix to use for the filenames of the XML files. Defaults to "item-"
-    --downloadWhat: What data to download ("all", "update", or "sample"). Defaults to "update"
+    --login           (str)  : EasyDB login email (required)
+    --password        (str)  : EasyDB account password (required)
+    --module          (str)  : Name of the module to download (e.g., "person", "group") (required)
+    --base_folder     (str)  : Root folder where XML files will be saved (required)
+    --filenamePrefix  (str)  : Prefix for generated XML files (optional, default: "item-")
+    --downloadWhat    (str)  : Download mode ("all", "update", or "sample"; optional, default: "update")
+
+Download Modes:
+    - "all"     : Downloads all items, ignoring last sync time.
+    - "update"  : Downloads only updated items since the last recorded sync (default).
+    - "sample"  : Downloads a small subset of sample data for testing purposes.
+
+Example:
+    python download_data_from_easydb.py \
+        --login user@example.com \
+        --password secret123 \
+        --module person \
+        --base_folder ./data/ \
+        --filenamePrefix person- \
+        --downloadWhat all
 """
 
 import argparse
@@ -31,19 +49,6 @@ EASYDB_URL = 'https://collections.gta.arch.ethz.ch'
 def sanitize_path(path):
     """
     Ensures that a given file path ends with a forward slash ('/').
-
-    This function checks whether the input path ends with a forward slash. 
-    If it does not, the function appends a forward slash to the path.
-
-    Args:
-        path (str): The file or directory path to sanitize.
-
-    Returns:
-        str: The sanitized path, guaranteed to end with a forward slash.
-
-    Example:
-        Input: "folder/subfolder"
-        Output: "folder/subfolder/"
     """
     if path[-1] != '/':
         return path + '/'
@@ -52,17 +57,6 @@ def sanitize_path(path):
 def format_file(xml):
     """
     Formats an XML file by removing attributes from the <objects> tag.
-
-    This function reads the content of an XML file, modifies it to remove any
-    attributes from the <objects> tag (leaving only the tag itself), and then
-    writes the updated content back to the file.
-
-    Args:
-        xml (str): The file path of the XML file to format.
-
-    Example:
-        Input:  <objects id="123" type="example">...</objects>
-        Output: <objects>...</objects>
     """
     with open(xml, "r", encoding="utf-8") as file:
         xml_content = file.read()
@@ -76,29 +70,7 @@ def format_file(xml):
 def format_all_files(path):
     """
     Formats all XML files in a given directory and its subdirectories.
-
-    This function recursively scans the specified directory for XML files and applies the `format_file`
-    function to each one. It also keeps track of directories encountered during the traversal, ensuring 
-    that only unique and deepest-level directories are stored.
-
-    Args:
-        path (str): The root directory path to scan for XML files and subdirectories.
-
-    Behavior:
-        - Applies `format_file` to all files ending with `.xml`.
-        - Tracks and maintains a list of unique directories.
-
-    Example:
-        Input:
-            A directory containing:
-                folder/
-                ├── subfolder/
-                │   ├── file1.xml
-                │   └── file2.xml
-                └── file3.xml
-
-        Output:
-            Formats `file1.xml`, `file2.xml`, and `file3.xml`.
+    Output: Formats `file1.xml`, `file2.xml`, and `file3.xml`.
     """
     paths = []
     for subpath in pathlib.Path(path).rglob("*"):
@@ -111,39 +83,7 @@ def format_all_files(path):
 
 def main(*, login, password, objecttype, base_folder, limit=None, filenamePrefix='item-', downloadWhat='update'):
     """
-    Main function to handle downloading, processing, and formatting data.
-
-    This function orchestrates the download and formatting pipeline for a specific object type 
-    from EasyDB. It authenticates the session, manages metadata, and processes the files 
-    based on the specified parameters.
-
-    Args:
-        login (str): The EasyDB login username.
-        password (str): The EasyDB login password.
-        objecttype (str): The type of objects to download (e.g., "person", "group").
-        base_folder (str): The base folder path for storing downloaded data.
-        filenamePrefix (str, optional): The prefix for generated filenames. Defaults to 'item-'.
-        downloadWhat (str, optional): Specifies what to download ('update', 'all', or 'sample').
-            - "all": Download all available data.
-            - "update": Download only updated data since the last sync.
-            - "sample": Download a limited sample of data.
-
-    Behavior:
-        - Sets up the EasyDB session with authentication.
-        - Tracks and logs metadata (e.g., `lastUpdated` timestamp).
-        - Determines the appropriate pipeline to run (`run_export_pipeline` or `sample_run_export_pipeline`).
-        - Updates metadata for the current session.
-        - Formats all XML files in the download directory.
-
-    Example:
-        main(
-            login="user",
-            password="password123",
-            objecttype="person",
-            base_folder="/data/source/",
-            filenamePrefix="person-item-",
-            downloadWhat="all"
-        )
+    Main function to handle authentication, downloading, formatting, and metadata updates.
     """
     download_path = sanitize_path(base_folder + objecttype)
     
