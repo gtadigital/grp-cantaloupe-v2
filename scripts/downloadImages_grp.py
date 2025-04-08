@@ -1,3 +1,38 @@
+"""
+Script to download and process images listed in a CSV file, converting them to TIFF format.
+
+This script is designed for batch downloading and processing of image files from
+a CSV file with `_id`, `image_url`, and `filename` columns. It supports a range of image formats,
+including `.heic`, and saves them in TIFF format. Metadata is updated to avoid redundant downloads.
+
+Key Features:
+- Supports common image formats (JPG, PNG, HEIC, GIF, BMP, TIF).
+- Converts `.heic` images using `pillow_heif`.
+- Skips download if the URL has already been processed, based on external metadata.
+- Handles download retries for robustness.
+- Saves images in a flat directory structure as `cms-<id>.tif`.
+- Tracks processed files in a `to_db_<YYYY_MM_DD>.csv` file.
+- Progress is displayed via a tqdm progress bar.
+
+The CSV should contain the following headers:
+    _id,image_url,filename
+
+Usage:
+    python download_images.py --input-file your_input.csv --offset 0 --limit 100
+
+Arguments:
+    --input-file   : Name of the input CSV file (located in /data)
+    --offset       : Starting index in the CSV (default: 0)
+    --limit        : Maximum number of images to process (default: 999999)
+
+Output:
+    - Downloads images to `/images` directory.
+    - Converts and saves them as `cms-<id>.tif`.
+    - Writes tracking data to `to_db_<date>.csv`.
+    - Skips entries that are not images or have already been processed.
+"""
+
+
 import csv
 import requests
 import sys
@@ -132,7 +167,5 @@ with open(toDBFile, 'w') as g:
         
         # Update the metadata with the new download URL
         metadata.setLatestImageDownloadUrlForFile(xml_filename, csv_url)
-        
-        print(f"Downloaded and saved image cms-{_id}.tif")
         
     print(f"The file {toDBFile} has been created.")
