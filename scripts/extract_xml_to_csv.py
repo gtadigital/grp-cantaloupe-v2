@@ -7,6 +7,16 @@ import argparse
 # namespace is not defined consistently in all the files
 NAMESPACE = {'ns': '*'}
 
+
+def get_download_url_from_versions(versions, file_class):
+    for version in versions:
+        class_elem = version.find("ns:class", NAMESPACE)
+        if class_elem is not None and class_elem.text.strip() == file_class:
+            download_url_elem = version.find("ns:download_url", NAMESPACE)
+            if download_url_elem is not None and download_url_elem.text.strip():
+                return download_url_elem.text.strip()
+    return None
+
 def extract_data_from_xml(xml_file):
     """Extract _id and download_url from an XML file."""
     try:
@@ -25,14 +35,13 @@ def extract_data_from_xml(xml_file):
         versions = root.findall(".//ns:do_grpm_06/ns:do_digitalobject/ns:files/ns:file/ns:versions/ns:version[@name='original']", NAMESPACE)
         
         # Find the first <version> element with <class> = "image" and extract the <download_url> element
-        download_url = None
-        for version in versions:
-            class_elem = version.find("ns:class", NAMESPACE)
-            if class_elem is not None and class_elem.text.strip() == "image":
-                download_url_elem = version.find("ns:download_url", NAMESPACE)
-                if download_url_elem is not None and download_url_elem.text.strip():
-                    download_url = download_url_elem.text.strip()
-                    break  # Stop at the first valid image version
+        download_url = get_download_url_from_versions(versions, "image")
+        download_office_url = get_download_url_from_versions(versions, "office")
+
+        # Check for pdfs
+        if download_office_url is not None and download_office_url.endswith(".pdf"):
+            preview_versions = root.findall(".//ns:do_grpm_06/ns:do_digitalobject/ns:files/ns:file/ns:versions/ns:version[@name='preview']", NAMESPACE)
+            download_url = get_download_url_from_versions(preview_versions, "image")
 
         if not download_url:
             print(f"!! No valid image download_url found in {xml_file}")
@@ -41,7 +50,7 @@ def extract_data_from_xml(xml_file):
         # Takes the element after the last slash
         filename = xml_file.rsplit('/', 1)[-1]
 
-        return _id, download_url, filename
+        return _id, filename, download_url, download_office_url
 
     except Exception as e:
         print(f"Error processing {xml_file}: {e}")
@@ -54,7 +63,7 @@ def process_directory(input_dir, output_dir):
     output_csv = os.path.join(output_dir, filename)
     with open(output_csv, mode="w", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
-        writer.writerow(["_id", "image_url", "filename"])  # Write header
+        writer.writerow(["_id", "filename", "image_url", "pdf_url"])  # Write header
 
         for filename in os.listdir(input_dir):
             if filename.endswith(".xml"):
