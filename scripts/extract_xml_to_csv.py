@@ -1,3 +1,29 @@
+"""
+Script to extract identifiers and image download URLs from XML files and save the results to a CSV file.
+
+This script parses XML files in a specified input directory, looks for the `_id` and associated 
+download URL of image files marked as "original", and writes the extracted data into a CSV file 
+named `id_url_table.csv` in the specified output directory.
+
+Note:
+    - The XML files may or may not declare consistent namespaces. This script uses a wildcard namespace selector.
+    - Only the first valid image version per file is extracted (i.e., version with name='original' and class='image').
+
+Usage:
+    python extract_ids_and_urls.py /path/to/input_dir /path/to/output_dir
+
+Arguments:
+    - input_dir: Directory containing input XML files.
+    - output_dir: Directory where the resulting CSV file will be saved.
+
+CSV Output:
+The script generates a CSV file with the following columns:
+    - _id: Unique identifier extracted from each XML file
+    - image_url: URL of the downloadable image
+    - filename: The original XML filename (useful for traceability)
+"""
+
+
 import os
 import csv
 import xml.etree.ElementTree as ET
