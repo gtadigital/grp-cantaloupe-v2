@@ -2,7 +2,7 @@ import csv
 import requests
 import time
 import os
-import datetime
+from datetime import datetime, timezone
 import argparse
 from io import BytesIO
 import pillow_heif
@@ -40,7 +40,7 @@ args = parser.parse_args()
 csvFile = os.path.join(dataFolder, args.input_file)
 offset = args.offset
 limit = args.limit
-date = datetime.date.today().strftime('%Y_%m_%d')
+date = datetime.now(timezone.utc).strftime("%Y_%m_%d__%H_%M_%S")
 
 metadata = ItemMetadata("/data/source")
 
@@ -125,18 +125,12 @@ with open(f'to_db_{date}.csv', 'w', newline='', encoding='utf-8') as img_csv_fil
 
     image_writer = csv.writer(img_csv_file)
     pdf_writer = csv.writer(pdf_csv_file)
-    # count = 0
     for row in tqdm(data[offset:offset + limit]):
         _id = row['_id']
         xml_filename = row["filename"]
         image_url = row['image_url']
         pdf_url = row['pdf_url']
         
-        # if not pdf_url or not pdf_url.strip().endswith(".pdf"):
-        #     continue
-        # count += 1
-        # if count > 10:
-        #     break
         download_image(_id, image_url, xml_filename, image_writer)
         download_pdf(_id, pdf_url, xml_filename, pdf_writer)
 
