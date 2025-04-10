@@ -4,3 +4,4 @@ images/*.*
 data/
 scripts/to_db_*.csv
 .qodo
+__pycache__
