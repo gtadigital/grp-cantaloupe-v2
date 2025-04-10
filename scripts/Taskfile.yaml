@@ -6,7 +6,7 @@ tasks:
     cmds:
       - task: update-data
       - task: generate-csv
-      - task: download-images
+      - task: download-assets
 
   download-all-data:
     desc: "Download digital object xml files from easydb"
@@ -84,12 +84,12 @@ tasks:
       - echo "Finished"
 
 
-  download-images:
-    desc: "Download and process images from CSV"
+  download-assets:
+    desc: "Download and process assets from CSV"
     vars:
       INPUT_FILE: "{{.INPUT_FILE | default \"/data/csv/id_url_table.csv\"}}"
       OFFSET: "{{.OFFSET | default \"0\"}}"
       LIMIT: "{{.LIMIT | default \"999999\"}}" # default limit in the python script 999999
     cmds:
       - echo "Using {{.INPUT_FILE}}, offset {{.OFFSET}}, limit {{.LIMIT}}"
-      - python downloadImages_grp.py --input-file={{.INPUT_FILE}} --offset={{.OFFSET}} --limit={{.LIMIT}}
+      - python download_assets_grp.py --input-file={{.INPUT_FILE}} --offset={{.OFFSET}} --limit={{.LIMIT}}

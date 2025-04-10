@@ -7,7 +7,7 @@ services:
         volumes:
             - ./cache:/var/cache/cantaloupe
             - ./config:/config
-            - ./images:/images
+            - ./assets:/assets
     jobs:
         build: ./services/jobs
         container_name: ${PROJECT_NAME}_jobs
@@ -15,7 +15,7 @@ services:
         volumes:
             - ./data:/data
             - ./scripts:/scripts
-            - ./images:/images
+            - ./assets:/assets
         environment:
             - JAVA_OPTS=-Xms512m -Xmx1024m
             - COMPOSE_PROJECT_NAME=${PROJECT_NAME}

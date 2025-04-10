@@ -33,7 +33,7 @@ docker compose exec jobs task
 This will run the following tasks in order:
 - `update-data`
 - `generate-csv`
-- `download-images`
+- `download-assets`
 
 ## Tasks
 
@@ -51,7 +51,7 @@ This will output a list of tasks:
 task: Available tasks for this project:
 * default:                 Default task
 * download-all-data:       Download digital object xml files from easydb
-* download-images:         Download and process images from CSV
+* download-assets:         Download and process assets from CSV
 * generate-csv:            Extract data from XML and generate csv
 * update-data:             Update data from EasyDB
 ```
@@ -70,12 +70,12 @@ docker compose exec jobs task download-all-data
 
 `generate-csv` extracts identifiers and image download URLs from XML files and saves the results to a CSV file.
 
-`download-images` downloads and processes images listed in the generated CSV file, converting them to TIFF format.
+`download-assets` downloads and processes assets listed in the generated CSV file, converting the images to TIFF format.
 
-You can manually set the input csv file, the offset and the limit for downloading the images: 
+You can manually set the input csv file, the offset and the limit for downloading the assets: 
 
 ```sh
-docker compose exec jobs task download-images INPUT_FILE=/path/to/my_csv.csv OFFSET=0 LIMIT=100
+docker compose exec jobs task download-assets INPUT_FILE=/path/to/my_csv.csv OFFSET=0 LIMIT=100
 ```
 
 Otherwise, the default values `INPUT_FILE=/data/csv/id_url_table.csv`, `OFFSET=0`, and `LIMIT=999999` are used.
