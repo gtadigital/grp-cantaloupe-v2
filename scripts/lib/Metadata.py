@@ -225,7 +225,7 @@ class ItemMetadata:
             
     def setLatestPdfDownloadUrlForFile(self, filename, latestPdfDownloadUrl, *, write=True):
         """
-        Set the latest image download url for a specific file.
+        Set the latest pdf download url for a specific file.
         Adds the key 'files' to the metadata if it does not exist yet.
         Adds the key 'filename' to the 'files' key if it does not exist yet.
 
