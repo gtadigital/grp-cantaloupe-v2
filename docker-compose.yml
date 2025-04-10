@@ -1,4 +1,3 @@
-version: "3"
 services:
     cantaloupe:
         build: .
@@ -6,6 +5,7 @@ services:
         image: swissartresearx/cantaloupe:5.0
         restart: always
         volumes:
+            - ./cache:/var/cache/cantaloupe
             - ./config:/config
             - ./assets:/assets
     jobs:
