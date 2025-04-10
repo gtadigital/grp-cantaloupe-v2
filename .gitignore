@@ -1,5 +1,6 @@
 .env
+cache/
+data/
 images/*.*
 !images/.gitkeep
-data/
 scripts/to_db_*.csv
