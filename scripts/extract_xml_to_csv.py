@@ -1,3 +1,29 @@
+"""
+Script to extract identifiers and image download URLs from XML files and save the results to a CSV file.
+
+This script parses XML files in a specified input directory, looks for the `_id` and associated 
+download URL of image files marked as "original", and writes the extracted data into a CSV file 
+named `id_url_table.csv` in the specified output directory.
+
+Note:
+    - The XML files may or may not declare consistent namespaces. This script uses a wildcard namespace selector.
+    - Only the first valid image version per file is extracted (i.e., version with name='original' and class='image').
+
+Usage:
+    python extract_ids_and_urls.py /path/to/input_dir /path/to/output_dir
+
+Arguments:
+    - input_dir: Directory containing input XML files.
+    - output_dir: Directory where the resulting CSV file will be saved.
+
+CSV Output:
+The script generates a CSV file with the following columns:
+    - _id: Unique identifier extracted from each XML file
+    - image_url: URL of the downloadable image
+    - filename: The original XML filename (useful for traceability)
+"""
+
+
 import os
 import csv
 import xml.etree.ElementTree as ET
@@ -8,12 +34,12 @@ import argparse
 NAMESPACE = {'ns': '*'}
 
 def extract_data_from_xml(xml_file):
-    """Extract _system_object_id and download_url from an XML file."""
+    """Extract _id and download_url from an XML file."""
     try:
         tree = ET.parse(xml_file)
         root = tree.getroot()
 
-        # Extract _system_object_id
+        # Extract _id
         _id = root.find(".//ns:do_grpm_06/ns:_id", NAMESPACE)
         if _id is None:
             print("!! There's no _id", xml_file)
@@ -24,6 +50,7 @@ def extract_data_from_xml(xml_file):
         # Find all <version> elements inside <versions> with @name='original'
         versions = root.findall(".//ns:do_grpm_06/ns:do_digitalobject/ns:files/ns:file/ns:versions/ns:version[@name='original']", NAMESPACE)
         
+        # Find the first <version> element with <class> = "image" and extract the <download_url> element
         download_url = None
         for version in versions:
             class_elem = version.find("ns:class", NAMESPACE)
@@ -37,7 +64,8 @@ def extract_data_from_xml(xml_file):
             print(f"!! No valid image download_url found in {xml_file}")
             return None
         
-        filename = xml_file.rsplit('/', 1)[-1]  # Takes the element after the last slash
+        # Takes the element after the last slash
+        filename = xml_file.rsplit('/', 1)[-1]
 
         return _id, download_url, filename
 
@@ -57,6 +85,7 @@ def process_directory(input_dir, output_dir):
         for filename in os.listdir(input_dir):
             if filename.endswith(".xml"):
                 file_path = os.path.join(input_dir, filename)
+                # Process XML file
                 extracted_data = extract_data_from_xml(file_path)
 
                 if extracted_data:

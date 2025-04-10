@@ -1,3 +1,38 @@
+"""
+Script to download and process images listed in a CSV file, converting them to TIFF format.
+
+This script is designed for batch downloading and processing of image files from
+a CSV file with `_id`, `image_url`, and `filename` columns. It supports a range of image formats,
+including `.heic`, and saves them in TIFF format. Metadata is updated to avoid redundant downloads.
+
+Key Features:
+- Supports common image formats (JPG, PNG, HEIC, GIF, BMP, TIF).
+- Converts `.heic` images using `pillow_heif`.
+- Skips download if the URL has already been processed, based on external metadata.
+- Handles download retries for robustness.
+- Saves images in a flat directory structure as `cms-<id>.tif`.
+- Tracks processed files in a `to_db_<YYYY_MM_DD>.csv` file.
+- Progress is displayed via a tqdm progress bar.
+
+The CSV should contain the following headers:
+    _id,image_url,filename
+
+Usage:
+    python download_images.py --input-file your_input.csv --offset 0 --limit 100
+
+Arguments:
+    --input-file   : Name of the input CSV file (located in /data)
+    --offset       : Starting index in the CSV (default: 0)
+    --limit        : Maximum number of images to process (default: 999999)
+
+Output:
+    - Downloads images to `/images` directory.
+    - Converts and saves them as `cms-<id>.tif`.
+    - Writes tracking data to `to_db_<date>.csv`.
+    - Skips entries that are not images or have already been processed.
+"""
+
+
 import csv
 import requests
 import sys
@@ -49,24 +84,26 @@ with open(csvFile, 'r') as f:
     for row in reader:
         data.append(row)
 
-print("The number of entries in " + csvFileName + " is", len(data))  # Number of entries in the CSV
+print(f"The number of entries in {csvFileName} is {len(data)}")  # Number of entries in the CSV
 
-toDBFile = 'to_db_%s.csv' % (date)
+toDBFile = f'to_db_{date}.csv'
 
 with open(toDBFile, 'w') as g:
     writer = csv.writer(g)
 
+    # Iterate through the csv data
     for row in tqdm(data[offset:offset + limit]):
         _id = row['_id']
         csv_url = row['image_url']
         xml_filename = row["filename"]
         
+        # Get the latest image download URL for the file
         latestImageDownloadUrl = metadata.getLatestImageDownloadUrlForFile(xml_filename)
 
         directory = parentFolder # no subfolders
         os.makedirs(directory, exist_ok=True)
 
-        outputFile = '%s/cms-%s.tif' % (directory, _id)
+        outputFile = f'{directory}/cms-{_id}.tif'
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0'
         }
@@ -81,6 +118,7 @@ with open(toDBFile, 'w') as g:
             print("Image already downloaded", _id, csv_url)
             continue
                 
+        # Attempt to download the image
         r = requests.get(csv_url, allow_redirects=True, headers=headers)
         retries = 1
         while 'image' not in r.headers['Content-Type'] and retries <= maxRetries:
@@ -89,6 +127,7 @@ with open(toDBFile, 'w') as g:
             r = requests.get(csv_url, allow_redirects=True, headers=headers)
             retries += 1
 
+        # Attempt to download the image again if it fails, up to maxRetries (default = 3)
         if retries >= maxRetries:
             print("Could not download", _id, csv_url)
             continue
@@ -115,15 +154,18 @@ with open(toDBFile, 'w') as g:
                 print("Error opening image", _id, e)
                 continue
         
+        # Save the image as TIFF
         try:
             img.save(outputFile, 'TIFF')
         except Exception as e:
             print("Error saving image", _id, e)
             continue
 
+        # Keep track of downloaded images in 'to_db_{date}.csv' files
         line = ['cms-' + _id + '.tif', directory + '/cms-' + _id + '.tif']
         writer.writerow(line)
-        metadata.setLatestImageDownloadUrlForFile(xml_filename, csv_url)
-        print(f"Downloaded and saved image cms-{_id}.tif")
         
-    print("The file %s has been created." % (toDBFile))
+        # Update the metadata with the new download URL
+        metadata.setLatestImageDownloadUrlForFile(xml_filename, csv_url)
+        
+    print(f"The file {toDBFile} has been created.")

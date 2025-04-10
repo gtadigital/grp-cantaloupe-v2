@@ -33,7 +33,7 @@ class BasePreprocessor(Preprocessor):
         """
         Common preprocessing steps that are shared across all modules.
         """
-        content = content.replace('xmlns="http://www.zetcom.com/ria/ws/module"', '')
+        content = content.replace('xmlns="https://schema.easydb.de/EASYDB/1.0/objects/"', '') # remove easydb namespace
         root = self.processWikidataIdentifiers(content)
         return self.dumpXML(root)
     
