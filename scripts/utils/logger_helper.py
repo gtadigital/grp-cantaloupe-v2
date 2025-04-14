@@ -2,8 +2,8 @@ import logging
 import os
 import sys
 
-def setup_logger(log_file="/logs/log.log", default_level=logging.INFO):
-    logger = logging.getLogger(__name__)
+def setup_logger(name=__name__, log_file="/logs/log.log", default_level=logging.INFO):
+    logger = logging.getLogger(name)
 
     if logger.handlers:
         return logger  # Prevent duplicate handlers
