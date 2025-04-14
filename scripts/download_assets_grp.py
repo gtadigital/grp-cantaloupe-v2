@@ -10,6 +10,9 @@ from PIL import Image
 import PIL
 from tqdm import tqdm
 from lib.Metadata import ItemMetadata
+from utils.logger_helper import setup_logger
+
+logger = setup_logger()
 
 PIL.Image.MAX_IMAGE_PIXELS = 933120000
 
@@ -46,11 +49,11 @@ metadata = ItemMetadata("/data/source")
 
 def download_image(_id, image_url, xml_filename, writer):
     if not image_url.lower().endswith(ACCEPTED_IMAGE_EXTS):
-        print(_id, image_url, "is not a valid image")
+        logger.warning(_id, image_url, "is not a valid image")
         return
 
     if image_url == metadata.getLatestImageDownloadUrlForFile(xml_filename):
-        print("Image already downloaded", _id, image_url)
+        logger.info(f"Image already downloaded, {_id}, {image_url}")
         return
 
     outputFile = os.path.join(imagesFolder, f'cms-{_id}.tif')
@@ -64,7 +67,7 @@ def download_image(_id, image_url, xml_filename, writer):
             retries += 1
 
         if retries >= MAX_RETRIES:
-            print("Could not download", _id, image_url)
+            logger.warning(f"Could not download {_id}, {image_url}")
             return
 
         if image_url.lower().endswith('.heic'):
@@ -78,7 +81,7 @@ def download_image(_id, image_url, xml_filename, writer):
         metadata.setLatestImageDownloadUrlForFile(xml_filename, image_url)
 
     except Exception as e:
-        print(f"Error processing image for {_id}: {e}")
+        logger.error(f"Error processing image for {_id}: {e}")
 
 
 def download_pdf(_id, pdf_url, xml_filename, writer):
@@ -86,7 +89,7 @@ def download_pdf(_id, pdf_url, xml_filename, writer):
         return
 
     if pdf_url == metadata.getLatestPdfDownloadUrlForFile(xml_filename):
-        print("PDF already downloaded", _id)
+        logger.info(f"PDF already downloaded, {_id}")
         return
 
     output_pdf_File = os.path.join(pdfFolder, f'cms-{_id}.pdf')
@@ -100,7 +103,7 @@ def download_pdf(_id, pdf_url, xml_filename, writer):
             retries += 1
 
         if retries >= MAX_RETRIES:
-            print(f"Could not download PDF for {_id}: {pdf_url}")
+            logger.warning(f"Could not download PDF for {_id}: {pdf_url}")
             return
 
         with open(output_pdf_File, 'wb') as f:
@@ -108,17 +111,16 @@ def download_pdf(_id, pdf_url, xml_filename, writer):
 
         writer.writerow([f'cms-{_id}.pdf', output_pdf_File])
         metadata.setLatestPdfDownloadUrlForFile(xml_filename, pdf_url)
-        # print(f"Downloaded and saved PDF cms-{_id}.pdf")
 
     except Exception as e:
-        print(f"Error downloading PDF for {_id}: {e}")
+        logger.error(f"Error downloading PDF for {_id}: {e}")
 
 
 # Process CSV list
 with open(csvFile, 'r') as f:
     data = list(csv.DictReader(f))
 
-print(f"The number of entries in {args.input_file} is {len(data)}")
+logger.info(f"The number of entries in {args.input_file} is {len(data)}")
 
 with open(f'to_db_{date}.csv', 'w', newline='', encoding='utf-8') as img_csv_file, \
      open(f'to_db_pdf_{date}.csv', 'w', newline='', encoding='utf-8') as pdf_csv_file:
@@ -134,4 +136,4 @@ with open(f'to_db_{date}.csv', 'w', newline='', encoding='utf-8') as img_csv_fil
         download_image(_id, image_url, xml_filename, image_writer)
         download_pdf(_id, pdf_url, xml_filename, pdf_writer)
 
-print(f"Download complete. Lists of downloaded files saved to to_db_{date}.csv and to_db_pdf_{date}.csv")
+logger.info(f"Download complete. Lists of downloaded files saved to to_db_{date}.csv and to_db_pdf_{date}.csv")

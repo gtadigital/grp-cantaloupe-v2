@@ -28,11 +28,14 @@ import os
 import csv
 import xml.etree.ElementTree as ET
 import argparse
+from tqdm import tqdm
+from utils.logger_helper import setup_logger
 
 # Define the namespace
 # namespace is not defined consistently in all the files
 NAMESPACE = {'ns': '*'}
 
+logger = setup_logger()
 
 def get_download_url_from_versions(versions, file_class):
     for version in versions:
@@ -52,7 +55,7 @@ def extract_data_from_xml(xml_file):
         # Extract _id
         _id = root.find(".//ns:do_grpm_06/ns:_id", NAMESPACE)
         if _id is None:
-            print("!! There's no _id", xml_file)
+            logger.warning("!! There's no _id", xml_file)
             return None
 
         _id = _id.text.strip()
@@ -70,7 +73,7 @@ def extract_data_from_xml(xml_file):
             download_url = get_download_url_from_versions(preview_versions, "image")
 
         if not download_url:
-            print(f"!! No valid image download_url found in {xml_file}")
+            logger.info(f"No valid image download_url found in {xml_file}")
             return None
         
         # Takes the element after the last slash
@@ -79,7 +82,7 @@ def extract_data_from_xml(xml_file):
         return _id, filename, download_url, download_office_url
 
     except Exception as e:
-        print(f"Error processing {xml_file}: {e}")
+        logger.error(f"Error processing {xml_file}: {e}")
         return None
 
 
@@ -90,17 +93,17 @@ def process_directory(input_dir, output_dir):
     with open(output_csv, mode="w", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
         writer.writerow(["_id", "filename", "image_url", "pdf_url"])  # Write header
+        
+        xml_files = [f for f in os.listdir(input_dir) if f.endswith(".xml")]
 
-        for filename in os.listdir(input_dir):
-            if filename.endswith(".xml"):
-                file_path = os.path.join(input_dir, filename)
-                # Process XML file
-                extracted_data = extract_data_from_xml(file_path)
+        for filename in tqdm(xml_files, desc="Processing XML files", unit="file"):
+            file_path = os.path.join(input_dir, filename)
+            extracted_data = extract_data_from_xml(file_path)
 
-                if extracted_data:
-                    writer.writerow(extracted_data)
+            if extracted_data:
+                writer.writerow(extracted_data)
 
-    print(f"CSV file saved: {output_csv}")
+    logger.info(f"CSV file saved: {output_csv}")
 
 
 if __name__ == "__main__":

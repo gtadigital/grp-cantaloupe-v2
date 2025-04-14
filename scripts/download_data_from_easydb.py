@@ -43,8 +43,11 @@ import re
 sys.path.append( 'utils' )
 from easydb import Session, start_session, authenticate_session, deauthenticate_session, run_export_pipeline
 from lib.Metadata import ItemMetadata
+from utils.logger_helper import setup_logger
 
 EASYDB_URL = 'https://collections.gta.arch.ethz.ch'
+
+logger = setup_logger()
 
 def sanitize_path(path):
     """
@@ -93,9 +96,6 @@ def main(*, login, password, objecttype, base_folder, limit=None, filenamePrefix
     ezdb._setPassword(password)
     authenticate_session(ezdb)
 
-    print("base_folder:", base_folder)
-    print("path:", download_path)
-
     metadata = ItemMetadata(base_folder)
 
     # READ DATE FROM THE METADATA FILE
@@ -108,12 +108,11 @@ def main(*, login, password, objecttype, base_folder, limit=None, filenamePrefix
     if downloadWhat == "all" or lastUpdated is None:
         lastUpdated = '1970-01-01 00:00:00.000'
 
-    print(f'lastUpdated: {lastUpdated}')
+    logger.info(f'lastUpdated: {lastUpdated}')
     
     # Store the start time of the download
     downloadStarted_utc = datetime.now(pytz.utc)
     downloadStarted = downloadStarted_utc.strftime('%Y-%m-%d %H:%M:%S.000')
-    print(f'downloadStarted: {downloadStarted}')
     
     run_export_pipeline(ezdb, objecttype, lastUpdated, download_path, limit, metadata, filenamePrefix)   
     

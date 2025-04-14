@@ -11,6 +11,9 @@ import argparse
 import requests, zipfile, io
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from utils.logger_helper import setup_logger
+
+logger = setup_logger()
 
 """
 Export class handles constructing export objects and JSON files
@@ -167,7 +170,7 @@ class Export:
             self.pool_ids = None
             
         else:
-            print('Unsupported input')
+            logger.info('Unsupported input')
             
         self.changelog_timestamp = changelog_timestamp
         self.limit = limit
@@ -294,7 +297,7 @@ Create new session using URL directed towards database
 
 def start_session(ezdb):
     try:
-        print("start session")
+        logger.info("start session")
         r = requests.get(ezdb.new_session)
         check_status_code(r, True)
     except requests.exceptions.ConnectionError as e:
@@ -318,13 +321,13 @@ def retrieve_current_session(ezdb):
         "token": ezdb.token
     }
 
-    print("retrieve current session, payload: %s" % json.dumps(payload, indent=4))
+    logger.info("retrieve current session, payload: %s" % json.dumps(payload, indent=4))
     r = requests.get(ezdb.new_session, params=payload)
     check_status_code(r, True)
 
     # proof that the session is the same
     if getVal(r.json(), "instance") == getVal(ezdb.content, "instance"):
-        print("retrieved correct session")
+        logger.info("retrieved correct session")
 
 
 """
@@ -343,7 +346,7 @@ def authenticate_session(ezdb):
         "password": ezdb.password
     }
 
-    print("authenticate session, payload: %s" % json.dumps(payload, indent=4))
+    logger.info("authenticate session, payload: %s" % json.dumps(payload, indent=4))
     r = requests.post(ezdb.auth_session, params=payload)
     check_status_code(r, True)
 
@@ -358,7 +361,7 @@ def deauthenticate_session(ezdb):
         "token": ezdb.token
     }
 
-    print("deauthenticate session, payload: %s" % json.dumps(payload, indent=4))
+    logger.info("deauthenticate session, payload: %s" % json.dumps(payload, indent=4))
     r = requests.post(ezdb.deauth_session, params=payload)
     check_status_code(r)
 
@@ -369,27 +372,28 @@ Functions for managing exports
 
 # check if export of a content type already exists, if yes, delete it
 def check_purge_export(ezdb):
-    print("Checking existing exports...")
+    logger.info("Checking existing exports...")
     tokenpayload = {
         "token": ezdb.token
     }
 
     r = requests.get('https://collections.gta.arch.ethz.ch/api/v1/export', params=tokenpayload)
     json_data = json.loads(r.content.decode('utf-8'))
+    print(json_data)
     
     if (json_data['count'] > 0):
-        print(f"Number of existing exports: {json_data['count']}")    
+        # logger.info(f"Number of existing exports: {json_data['count']}")    
         for ob in json_data['objects']:
             export_id = ob['export']['_id']
-            print(export_id)
+            # logger.info(export_id)
             requests.delete('https://collections.gta.arch.ethz.ch/api/v1/export/' + str(export_id), params=tokenpayload)
-        print('Exports deleted')
+        logger.info('Exports deleted')
     else:
-        print('No existing exports')
+        logger.info('No existing exports')
     return 0
 
 def create_export(ezdb, type_, changelog_timestamp, limit):
-    print('Creating export for {} object type'.format(type_))
+    logger.info('Creating export for {} object type'.format(type_))
     tokenpayload = {
         "token": ezdb.token
     }
@@ -399,14 +403,14 @@ def create_export(ezdb, type_, changelog_timestamp, limit):
     check_status_code(r)
     export_creation_json = r.json()
     if 'code' in export_creation_json.keys():
-        print('Could not create export: {}'.format(export_creation_json['code']))
+        logger.warning('Could not create export: {}'.format(export_creation_json['code']))
         return None, None
     export_object._setId(export_creation_json['export']['_id'])
     return export_object, export_creation_json
 
 
 def start_export(ezdb, export_object):
-    print('Initiating export')
+    logger.info('Initiating export')
     tokenpayload = {
         "token": ezdb.token
     }
@@ -427,7 +431,7 @@ def check_export_status(ezdb, export_object):
 
 
 def download_export(ezdb, export_object, local_path, metadata_obj, filenamePrefix):
-    print('Downloading export')
+    logger.info('Downloading export')
     tokenpayload = {
         "token": ezdb.token
     }
@@ -454,7 +458,6 @@ def download_export(ezdb, export_object, local_path, metadata_obj, filenamePrefi
         root = tree.getroot()
         
         lastModified = root.find('.//ns:_last_modified', namespaces=namespace)
-        # uuid = root.find('.//ns:_uuid', namespaces=namespace)
         _id = root.find('.//ns:_id', namespaces=namespace)
         
         if lastModified is not None:
@@ -463,11 +466,7 @@ def download_export(ezdb, export_object, local_path, metadata_obj, filenamePrefi
  
         else:
             lastModifiedText = None
-        
-        # if uuid is not None:
-        #     uuidText = uuid.text
-        # else:
-        #     uuidText = None
+
         if _id is not None:
             _idText = _id.text
         else:
@@ -475,20 +474,19 @@ def download_export(ezdb, export_object, local_path, metadata_obj, filenamePrefi
             
         filename = f"{filenamePrefix}{_idText}.xml"
         
-        # print(f'filename: {filename}')
-        print(f'fullpath: {local_path}{filename}')
+        logger.info(f'fullpath: {local_path}{filename}')
          
         with open(os.path.join(local_path, filename), "wb") as target:
             target.write(xml_content)
             
         metadata_obj.setLastUpdatedForFile(filename, lastModifiedText, write=False)
         
-    print('Successfully saved files to {}.'.format(local_path))
+    logger.info('Successfully saved files to {}.'.format(local_path))
     return 0
 
 
 def delete_export(ezdb, export_object):
-    print('Cleaning up (deleting remote export)')
+    logger.info('Cleaning up (deleting remote export)')
     tokenpayload = {
         "token": ezdb.token
     }
@@ -503,23 +501,23 @@ def run_export_pipeline(ezdb, objecttype, changelog_timestamp, path, limit, meta
     export_object, export_creation_json = create_export(ezdb, objecttype, changelog_timestamp, limit)
     export_object, export_start_json= start_export(ezdb, export_object)
     curr_state = 'processing'
-    print('Processing export')
+    logger.info('Processing export')
     while True:
-        print(f'Export state: {curr_state}')
+        logger.info(f'Export state: {curr_state}')
         export_check_json = check_export_status(ezdb, export_object)
         curr_state = export_check_json['_state']
         if curr_state in ['done']:
-            print("done")
+            logger.info("done")
             break
         if curr_state in ['failed']:
-            print('failed')
+            logger.warining('failed')
             break
         time.sleep(8)
     
     if curr_state == 'done':
         download_export(ezdb, export_object, path, metadata_obj, filenamePrefix)
     else:
-        print('Export failed or no records that match the search query were found')
+        logger.warining('Export failed or no records that match the search query were found')
     return delete_export(ezdb, export_object)
     
     
@@ -555,7 +553,7 @@ def root_menu_about(ezdb):
         "server": ""
     }
 
-    print(ezdb.header)
+    logger.info(ezdb.header)
 
     instance = getVal(ezdb.content, "instance")
     for key, value in instance.items():
@@ -571,7 +569,7 @@ def root_menu_about(ezdb):
             aboutDetails[key] = value
 
     # Get Plugins
-    print("get plugins")
+    logger.info("get plugins")
     r = requests.get(ezdb.plugin)
     check_status_code(r)
     ezdb.plugins = r.json()["plugins"]
@@ -586,7 +584,7 @@ def root_menu_about(ezdb):
     payload = {
         "token": ezdb.token
     }
-    print("get server info")
+    logger.info("get server info")
     r = requests.get(ezdb.server, params=payload)
     check_status_code(r)
 
@@ -630,10 +628,10 @@ def pretty_printer(dict):
 
 def check_status_code(response, exit_on_failure=False):
     if response.status_code != 200:
-        print("got status code %s: %s" %
+        logger.info("got status code %s: %s" %
               (response.status_code, json.dumps(response.json(), indent=4)))
         if exit_on_failure:
-            print("exit after unexpected status code")
+            logger.warining("exit after unexpected status code")
             exit(1)
 
 
@@ -642,8 +640,8 @@ error_message
 """
 
 def server_url_error_message(str, err):
-    print("URL is invalid")
-    print("{0} raises {1}").format(str, err)
+    logger.error("URL is invalid")
+    logger.error("{0} raises {1}").format(str, err)
     # sys.exit()
     exit(1)
 
