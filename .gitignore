@@ -1,8 +1,9 @@
 .env
 cache/
 data/
-images/*.*
+assets/
 !images/.gitkeep
 scripts/to_db_*.csv
 .qodo
 __pycache__
+logs/

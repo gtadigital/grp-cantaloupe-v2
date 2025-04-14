@@ -30,12 +30,13 @@ RUN pip install --no-cache-dir \
 # Install Taskfile task runner (https://taskfile.dev)
 RUN sh -c "$(curl -sSL https://taskfile.dev/install.sh)" -- -d
 
-RUN mkdir -p /scripts /data /assets
+RUN mkdir -p /scripts /data /assets /logs
 
 WORKDIR /scripts
 
 VOLUME /data
 VOLUME /scripts
 VOLUME /assets
+VOLUME /logs
 
 ENTRYPOINT ["tail", "-f", "/dev/null"]
