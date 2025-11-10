@@ -455,7 +455,7 @@ def download_export(ezdb, export_object, local_path, metadata_obj, filenamePrefi
         
         lastModified = root.find('.//ns:_last_modified', namespaces=namespace)
         # uuid = root.find('.//ns:_uuid', namespaces=namespace)
-        _id = root.find('.//ns:_id', namespaces=namespace)
+        _system_object_id = root.find('.//ns:_system_object_id', namespaces=namespace)
         
         if lastModified is not None:
             dt = datetime.strptime(lastModified.text, '%Y-%m-%dT%H:%M:%SZ')
@@ -468,12 +468,12 @@ def download_export(ezdb, export_object, local_path, metadata_obj, filenamePrefi
         #     uuidText = uuid.text
         # else:
         #     uuidText = None
-        if _id is not None:
-            _idText = _id.text
+        if _system_object_id is not None:
+            _system_object_idText = _system_object_id.text
         else:
-            _idText = None
+            _system_object_idText = None
             
-        filename = f"{filenamePrefix}{_idText}.xml"
+        filename = f"{filenamePrefix}{_system_object_idText}.xml"
         
         # print(f'filename: {filename}')
         print(f'fullpath: {local_path}{filename}')
