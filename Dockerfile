@@ -37,4 +37,4 @@ VOLUME /assets
 
 USER cantaloupe
 
-CMD ["sh", "-c", "java -Dcantaloupe.config=/config/cantaloupe.properties -Xmx2g -jar /cantaloupe/cantaloupe-$CANTALOUPE_VERSION.jar"]
+CMD ["sh", "-c", "java -Dcantaloupe.config=/config/cantaloupe.properties -Xmx8g -jar /cantaloupe/cantaloupe-$CANTALOUPE_VERSION.jar"]
