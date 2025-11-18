@@ -64,7 +64,7 @@ tasks:
           --login {{.LOGIN}} \
           --password {{.PASSWORD}} \
           --module {{.MODULE}} \
-          --base_folder /data/source/ \
+          --outputFolder /data/source/ \
           --filenamePrefix {{.FILENAMEPREFIX}} \
           --downloadWhat {{.DOWNLOAD_WHAT}} \
           {{.CLI_ARGS}}
