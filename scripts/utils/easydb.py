@@ -8,17 +8,27 @@ import json
 import os
 import copy
 import argparse
+import pytz
 import requests, zipfile, io
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from tqdm import tqdm
+import sys
+import logging
 
-"""
-Export class handles constructing export objects and JSON files
-"""
+logger = logging.getLogger("download_data")
+handler = logging.StreamHandler(sys.stderr)
+handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
+APPROVED_TAG = 207
+    
 class Export:
+    """
+    Export class handles constructing export objects and JSON files
+    """
     APPROVED_TAG = 12
-    # APPROVED_TAG = 207
     
     #template for search using objecttype
     objecttype_search_template = {
@@ -95,82 +105,82 @@ class Export:
     
     _exportid = None
     
-    def __init__(self, object_type, changelog_timestamp, limit):
+    def __init__(self, object_type, isSample):
         if object_type == 'person':
             self.name = 'ETL Process Person [Production]'
             self.tags = [88]
             self.objecttypes = ['act_grpm_0103']
             self.pool_fields = ['act_grpm_0103._pool.pool._id']
-            self.pool_ids = [85, 108]
-            
+            self.pool_ids = [124] if isSample else [85, 108]
+
         elif object_type == 'group':
             self.name = 'ETL Process Group [Production]'
             self.tags = [89, 90]
             self.objecttypes = ['act_grpm_0103']
             self.pool_fields = ['act_grpm_0103._pool.pool._id']
-            self.pool_ids = [85, 108]
+            self.pool_ids = [124] if isSample else [85, 108]
             
         elif object_type == 'architectural_competition':
             self.name = 'ETL Process Architectural Competition [Production]'
-            self.tags = None
+            self.tags = [210] if isSample else None
             self.objecttypes = ['ac']
             self.pool_fields = ['ac._pool.pool._id']            
             self.pool_ids = None
             
         elif object_type == 'archival_object':
             self.name = 'ETL Process Archival Unit [Production]'
-            self.tags = [self.APPROVED_TAG]
+            self.tags = [APPROVED_TAG]
             self.objecttypes = ['au_grpm_16']
             self.pool_fields = ['au_grpm_16._pool.pool._id']
-            self.pool_ids = [17, 127]
+            self.pool_ids = [122] if isSample else [17, 127]
             
         elif object_type == 'bibliographic_item':
             self.name = 'ETL Process Bibliographic Item [Production]'
             self.tags = None
             self.objecttypes = ['bi_grpm_08']
             self.pool_fields = ['bi_grpm_08._pool.pool._id']
-            self.pool_ids = [92]
+            self.pool_ids = [119] if isSample else [92]
             
         elif object_type == 'digital_object':
             self.name = 'ETL Process Digital Object [Production]'
             self.tags = None
             self.objecttypes = ['do_grpm_06']
             self.pool_fields = ['do_grpm_06._pool.pool._id']
-            self.pool_ids = [26, 59]
+            self.pool_ids = [125] if isSample else [26, 59]
             
         elif object_type == 'oeuvre':
+        # elif object_type == 'oeu':
             self.name = 'ETL Process Œuvre [Production]'
             self.tags = [91]
             self.objecttypes = ['oeu']
             self.pool_fields = ['oeu._pool.pool._id']
-            self.pool_ids = [92]
+            self.pool_ids = [119] if isSample else [92]
             
         elif object_type == 'built_work':
             self.name = 'ETL Process Built Work [Production]'
             self.tags = [92]
             self.objecttypes = ['oeu']
             self.pool_fields = ['oeu._pool.pool._id']
-            self.pool_ids = [92]
+            self.pool_ids = [119] if isSample else [92]
             
         elif object_type == 'project':
             self.name = 'ETL Process Architectural Project [Production]'
             self.tags = [93]
             self.objecttypes = ['oeu']
             self.pool_fields = ['oeu._pool.pool._id']
-            self.pool_ids = [92]
+            self.pool_ids = [119] if isSample else [92]
             
         elif object_type == 'place':
             self.name = 'ETL Process Place [Production]'
             self.tags = None
             self.objecttypes = ['pl_grpm_05']
             self.pool_fields = ['pl_grpm_05._pool.pool._id']
-            self.pool_ids = None
+            self.pool_ids = [128] if isSample else None
             
         else:
-            print('Unsupported input')
+            # print('Unsupported input')
+            logger.warning('Unsupported input')
             
-        self.changelog_timestamp = changelog_timestamp
-        self.limit = limit
 
     def _setId(self, id=None):
         self._id = id
@@ -186,9 +196,9 @@ def getExportDict(export):
     search_list = []
     
     # search only for records that have been changed after the given date
-    changelog_search = export.changelog_search_template
-    changelog_search['from'] = export.changelog_timestamp
-    search_list.append(changelog_search)
+    # changelog_search = export.changelog_search_template
+    # changelog_search['from'] = export.changelog_timestamp
+    # search_list.append(changelog_search)
      
     objecttype_search = export.objecttype_search_template
     objecttype_search['in'] = export.objecttypes
@@ -210,7 +220,6 @@ def getExportDict(export):
     export_dict['export']['name'] = export.name
     export_dict['export']['search']['objecttypes'] = export.objecttypes
     export_dict['export']['search']['search'] = search_list
-    export_dict['export']['search']['limit'] = export.limit
     
     return export_dict
 
@@ -287,6 +296,80 @@ class Session:
     plugins = property(_getPlugins, _setPlugins)
 
 
+def check_for_updates(ezdb, objecttype, lastUpdated):
+    """
+    Check if there are any updated objects since the last download.
+    """
+    headers = {
+        "X-EasyDB-Token": ezdb.token
+    }
+    
+    if objecttype == 'person':
+        objecttypes = ['act_grpm_0103']
+        tags = [88]
+    elif objecttype == 'group':
+        objecttypes = ['act_grpm_0103']
+        tags = [89, 90]
+    elif objecttype == 'architectural_competition':
+        objecttypes = ['ac']
+        tags = None
+    elif objecttype == 'archival_object':
+        objecttypes = ['au_grpm_16']
+        tags = [APPROVED_TAG]
+    elif objecttype == 'bibliographic_item':
+        objecttypes = ['bi_grpm_08']
+        tags = None
+    elif objecttype == 'digital_object':
+        objecttypes = ['do_grpm_06']
+        tags = None
+    elif objecttype == 'oeuvre':
+        objecttypes = ['oeu']
+        tags = [91]
+    elif objecttype == 'built_work':
+        objecttypes = ['oeu']
+        tags = [92]
+    elif objecttype == 'project':
+        objecttypes = ['oeu']
+        tags = [93]
+    elif objecttype == 'place':
+        objecttypes = ['pl_grpm_05']
+        tags = None
+    else:
+    # print('Unsupported input')
+        logger.warning('Unsupported input')
+    
+
+    payload = {
+        "format": "standard",
+        "type": "object",
+        # differentiate
+        "tags": tags,
+        "objecttypes": objecttypes,
+        "language": "de-DE",
+        "limit": 1,
+        "offset": 0,
+        "sort": [{"field": "_last_modified", "order": "DESC"}]
+    }
+
+    response = requests.post(ezdb.search, json=payload, headers=headers)
+    if response.status_code == 200:
+        data = response.json()
+        updated_objects = data.get("objects", [])
+        lastUpdatedServer = updated_objects[0]["_last_modified"]
+                
+        if lastUpdatedServer > lastUpdated:
+            logger.info("There are modifications since the last download. Creating new export...")
+            print("There are modifications since the last download. Creating new export...")
+            return True
+    else:
+        logger.error(f"Failed to fetch data: {response.status_code}")
+        print(f"Failed to fetch data: {response.status_code}")
+        logger.error(response.text)
+        print(response.text)
+    return False 
+
+
+
 """
 Create new session using URL directed towards database
 """
@@ -324,7 +407,8 @@ def retrieve_current_session(ezdb):
 
     # proof that the session is the same
     if getVal(r.json(), "instance") == getVal(ezdb.content, "instance"):
-        print("retrieved correct session")
+        # print("retrieved correct session")
+        logger.info("retrieved correct session")
 
 
 """
@@ -369,44 +453,42 @@ Functions for managing exports
 
 # check if export of a content type already exists, if yes, delete it
 def check_purge_export(ezdb):
-    print("Checking existing exports...")
     tokenpayload = {
         "token": ezdb.token
     }
 
-    r = requests.get('https://collections.gta.arch.ethz.ch/api/v1/export', params=tokenpayload)
+    r = requests.get(ezdb.export, params=tokenpayload)
     json_data = json.loads(r.content.decode('utf-8'))
     
     if (json_data['count'] > 0):
-        print(f"Number of existing exports: {json_data['count']}")    
+        logger.info(f"Number of existing exports: {json_data['count']}")    
         for ob in json_data['objects']:
             export_id = ob['export']['_id']
-            print(export_id)
-            requests.delete('https://collections.gta.arch.ethz.ch/api/v1/export/' + str(export_id), params=tokenpayload)
-        print('Exports deleted')
+            requests.delete(ezdb.export + "/" + str(export_id), params=tokenpayload)
+        logger.info('Exports deleted')
     else:
-        print('No existing exports')
+        logger.info('No existing exports')
     return 0
 
-def create_export(ezdb, type_, changelog_timestamp, limit):
-    print('Creating export for {} object type'.format(type_))
+def create_export(ezdb, type_, isSample):
+    logger.info('Creating export for {} object type'.format(type_))
     tokenpayload = {
         "token": ezdb.token
     }
-    export_object = Export(type_, changelog_timestamp, limit)
+    export_object = Export(type_, isSample)
     export_dict = getExportDict(export_object)
     r = requests.put(ezdb.export, params=tokenpayload, data=json.dumps(export_dict))
     check_status_code(r)
     export_creation_json = r.json()
     if 'code' in export_creation_json.keys():
-        print('Could not create export: {}'.format(export_creation_json['code']))
+        logger.error('Could not create export: {}'.format(export_creation_json['code']))
         return None, None
     export_object._setId(export_creation_json['export']['_id'])
     return export_object, export_creation_json
 
 
 def start_export(ezdb, export_object):
-    print('Initiating export')
+    logger.info('Initiating export')
     tokenpayload = {
         "token": ezdb.token
     }
@@ -427,20 +509,22 @@ def check_export_status(ezdb, export_object):
 
 
 def download_export(ezdb, export_object, local_path, metadata_obj, filenamePrefix):
-    print('Downloading export')
+    logger.info('Downloading export')
     tokenpayload = {
         "token": ezdb.token
     }
     export_id = export_object.id
-    r =  requests.get('https://collections.gta.arch.ethz.ch/api/v1/export/{}/zip'.format(export_id), params=tokenpayload)
+    r =  requests.get(ezdb.export + '/{}/zip'.format(export_id), params=tokenpayload)
     check_status_code(r)
     z = zipfile.ZipFile(io.BytesIO(r.content))
     
     namespace = {'ns': 'https://schema.easydb.de/EASYDB/1.0/objects/'}
     
-    for i, item in enumerate(z.namelist()):
-        # if i > 50:
-        #     continue
+    files_to_download_list = list(enumerate(z.namelist()))    
+    
+    for i, item in tqdm(files_to_download_list, desc=f"Downloading {export_object.objecttypes} files", total=len(files_to_download_list), unit="file"):
+        if i > 50:
+            continue
         
         filename = os.path.basename(item)
         # skip directories
@@ -455,35 +539,33 @@ def download_export(ezdb, export_object, local_path, metadata_obj, filenamePrefi
         
         lastModified = root.find('.//ns:_last_modified', namespaces=namespace)
         # uuid = root.find('.//ns:_uuid', namespaces=namespace)
-        _system_object_id = root.find('.//ns:_system_object_id', namespaces=namespace)
+        _id = root.find('.//ns:_id', namespaces=namespace)
         
         if lastModified is not None:
-            dt = datetime.strptime(lastModified.text, '%Y-%m-%dT%H:%M:%SZ')
-            lastModifiedText = dt.strftime('%Y-%m-%d %H:%M:%S.000')
- 
+            lastModifiedText = lastModified.text
         else:
             lastModifiedText = None
-        
-        # if uuid is not None:
-        #     uuidText = uuid.text
-        # else:
-        #     uuidText = None
-        if _system_object_id is not None:
-            _system_object_idText = _system_object_id.text
-        else:
-            _system_object_idText = None
             
-        filename = f"{filenamePrefix}{_system_object_idText}.xml"
+        if _id is not None:
+            _idText = _id.text
+        else:
+            _idText = None
+            
+        filename = f"{filenamePrefix}{_idText}.xml"
         
         # print(f'filename: {filename}')
-        print(f'fullpath: {local_path}{filename}')
+        # print(f'fullpath: {local_path}{filename}')
          
         with open(os.path.join(local_path, filename), "wb") as target:
             target.write(xml_content)
             
         metadata_obj.setLastUpdatedForFile(filename, lastModifiedText, write=False)
         
-    print('Successfully saved files to {}.'.format(local_path))
+    newlastUpdatedModule = datetime.now(pytz.utc)
+    logger.info(f'New last update module: {newlastUpdatedModule}')
+    metadata_obj.setLastUpdated(newlastUpdatedModule)
+    
+    logger.info('Successfully saved files to {}.'.format(local_path))
     return 0
 
 
@@ -493,33 +575,34 @@ def delete_export(ezdb, export_object):
         "token": ezdb.token
     }
     export_id = export_object.id
-    r = requests.delete('https://collections.gta.arch.ethz.ch/api/v1/export/' + str(export_id), params=tokenpayload)
+    r = requests.delete(ezdb.export + '/' + str(export_id), params=tokenpayload)
     check_status_code(r)
     return 0
   
 
-def run_export_pipeline(ezdb, objecttype, changelog_timestamp, path, limit, metadata_obj, filenamePrefix):
+def run_export_pipeline(ezdb, objecttype, path, metadata_obj, filenamePrefix, isSample=False):
     check_purge_export(ezdb)
-    export_object, export_creation_json = create_export(ezdb, objecttype, changelog_timestamp, limit)
+    export_object, export_creation_json = create_export(ezdb, objecttype, isSample)
     export_object, export_start_json= start_export(ezdb, export_object)
+    
     curr_state = 'processing'
     print('Processing export')
     while True:
-        print(f'Export state: {curr_state}')
+        logger.info(f'Export state: {curr_state}')
         export_check_json = check_export_status(ezdb, export_object)
         curr_state = export_check_json['_state']
         if curr_state in ['done']:
-            print("done")
+            logger.info("done")
             break
         if curr_state in ['failed']:
-            print('failed')
+            logger.info('failed')
             break
-        time.sleep(8)
+        time.sleep(5)
     
     if curr_state == 'done':
         download_export(ezdb, export_object, path, metadata_obj, filenamePrefix)
     else:
-        print('Export failed or no records that match the search query were found')
+        logger.info('Export failed or no records that match the search query were found')
     return delete_export(ezdb, export_object)
     
     
@@ -555,7 +638,7 @@ def root_menu_about(ezdb):
         "server": ""
     }
 
-    print(ezdb.header)
+    logger.info(ezdb.header)
 
     instance = getVal(ezdb.content, "instance")
     for key, value in instance.items():
@@ -630,10 +713,10 @@ def pretty_printer(dict):
 
 def check_status_code(response, exit_on_failure=False):
     if response.status_code != 200:
-        print("got status code %s: %s" %
+        logger.info("got status code %s: %s" %
               (response.status_code, json.dumps(response.json(), indent=4)))
         if exit_on_failure:
-            print("exit after unexpected status code")
+            logger.error("exit after unexpected status code")
             exit(1)
 
 
@@ -642,8 +725,8 @@ error_message
 """
 
 def server_url_error_message(str, err):
-    print("URL is invalid")
-    print("{0} raises {1}").format(str, err)
+    logger.error("URL is invalid")
+    logger.error("{0} raises {1}").format(str, err)
     # sys.exit()
     exit(1)
 
