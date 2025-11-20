@@ -43,13 +43,8 @@ import re
 sys.path.append( 'utils' )
 from easydb import Session, start_session, authenticate_session, deauthenticate_session, run_export_pipeline, check_for_updates
 from lib.Metadata import ItemMetadata
-import logging
-
-logger = logging.getLogger("download_data")
-handler = logging.StreamHandler(sys.stderr)
-handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+from utils.logger_helper import setup_logger
+logger = setup_logger()
 
 EASYDB_URL = 'https://collections.gta.arch.ethz.ch'
 
