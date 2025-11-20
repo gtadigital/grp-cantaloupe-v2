@@ -14,13 +14,9 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from tqdm import tqdm
 import sys
-import logging
+from utils.logger_helper import setup_logger
 
-logger = logging.getLogger("download_data")
-handler = logging.StreamHandler(sys.stderr)
-handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+logger = setup_logger()
 
 APPROVED_TAG = 207
     
@@ -359,13 +355,10 @@ def check_for_updates(ezdb, objecttype, lastUpdated):
                 
         if lastUpdatedServer > lastUpdated:
             logger.info("There are modifications since the last download. Creating new export...")
-            print("There are modifications since the last download. Creating new export...")
             return True
     else:
         logger.error(f"Failed to fetch data: {response.status_code}")
-        print(f"Failed to fetch data: {response.status_code}")
         logger.error(response.text)
-        print(response.text)
     return False 
 
 
