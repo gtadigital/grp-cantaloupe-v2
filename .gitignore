@@ -6,3 +6,4 @@ images/*.*
 scripts/to_db_*.csv
 .qodo
 __pycache__
+assets/
