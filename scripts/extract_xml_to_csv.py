@@ -28,6 +28,9 @@ import os
 import csv
 import xml.etree.ElementTree as ET
 import argparse
+from utils.logger_helper import setup_logger
+
+logger = setup_logger()
 
 # Define the namespace
 # namespace is not defined consistently in all the files
@@ -52,7 +55,7 @@ def extract_data_from_xml(xml_file):
         # Extract _system_object_id
         _system_object_id = root.find(".//ns:do_grpm_06/ns:_system_object_id", NAMESPACE)
         if _system_object_id is None:
-            print("!! There's no _system_object_id", xml_file)
+            logger.warning("!! There's no _system_object_id", xml_file)
             return None
 
         _system_object_id = _system_object_id.text.strip()
@@ -72,8 +75,8 @@ def extract_data_from_xml(xml_file):
         if not download_url:
             for version in versions:
                 class_elem = version.find("ns:class", NAMESPACE)
-            print(f"!! No valid image download_url found in {xml_file}")
-            print(f"!! file type: {class_elem.text.strip()}")
+            logger.warning(f"!! No valid image download_url found in {xml_file}")
+            logger.info(f"!! file type: {class_elem.text.strip()}")
             return None
         
         # Takes the element after the last slash
@@ -82,7 +85,7 @@ def extract_data_from_xml(xml_file):
         return _system_object_id, filename, download_url, download_office_url
 
     except Exception as e:
-        print(f"Error processing {xml_file}: {e}")
+        logger.error(f"Error processing {xml_file}: {e}")
         return None
 
 
@@ -103,7 +106,7 @@ def process_directory(input_dir, output_dir):
                 if extracted_data:
                     writer.writerow(extracted_data)
 
-    print(f"CSV file saved: {output_csv}")
+    logger.info(f"CSV file saved: {output_csv}")
 
 
 if __name__ == "__main__":
