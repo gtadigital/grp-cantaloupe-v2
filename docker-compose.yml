@@ -22,3 +22,4 @@ services:
             - COMPOSE_PROJECT_NAME=${PROJECT_NAME}
             - LOGIN=${LOGIN}
             - PASSWORD=${PASSWORD}
+            - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
