@@ -7,6 +7,9 @@ includes:
   utilities:
     taskfile: ./taskfiles/utilities.yml
     flatten: true
+  logging:
+    taskfile: ./taskfiles/logging.yml
+    flatten: true
 
 tasks:
   default:
@@ -72,7 +75,7 @@ tasks:
           --login {{.LOGIN}} \
           --password {{.PASSWORD}} \
           --module {{.MODULE}} \
-          --outputFolder /data/source/ \
+          --outputFolder {{.OUTPUT_FOLDER}} \
           --filenamePrefix {{.FILENAMEPREFIX}} \
           --downloadWhat {{.DOWNLOAD_WHAT}} \
           {{.CLI_ARGS}}
