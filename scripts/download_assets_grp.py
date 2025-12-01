@@ -39,24 +39,28 @@ REQUEST_TIMEOUT = 3  # seconds for requests
 # Paths
 dataFolder = "/data/"
 assetsFolder = "/assets"
+logsFolder = "/logs/"
 imagesFolder = os.path.join(assetsFolder, 'images')
 pdfFolder = os.path.join(assetsFolder, 'pdfs')
 os.makedirs(imagesFolder, exist_ok=True)
 os.makedirs(pdfFolder, exist_ok=True)
+os.makedirs(logsFolder, exist_ok=True)
 
 # Argument parser
 parser = argparse.ArgumentParser(description="Download and process images and PDFs from a CSV file.")
 parser.add_argument('--input-file', required=True, help="The CSV file containing image and PDF URLs")
+parser.add_argument('--metadata-dir', required=True, help="Directory where metadata.json is stored")
 parser.add_argument('--offset', type=int, default=0, help="Offset for processing (default: 0)")
 parser.add_argument('--limit', type=int, default=999999, help="Limit for processing (default: unlimited)")
 args = parser.parse_args()
 
 csvFile = os.path.join(dataFolder, args.input_file)
 offset = args.offset
+metadata_dir = args.metadata_dir
 limit = args.limit
 date = datetime.now(timezone.utc).strftime("%Y_%m_%d__%H_%M_%S")
 
-metadata = ItemMetadata("/data/source")
+metadata = ItemMetadata(metadata_dir)
 session = requests.Session()
 session.headers.update(HEADERS)
 
@@ -160,8 +164,8 @@ with open(csvFile, 'r') as f:
 
 logger.info(f"The number of entries in {args.input_file} is {len(data)}")
 
-with open(f'to_db_{date}.csv', 'w', newline='', encoding='utf-8') as img_csv_file, \
-     open(f'to_db_pdf_{date}.csv', 'w', newline='', encoding='utf-8') as pdf_csv_file:
+with open(f'{logsFolder}to_db_{date}.csv', 'w', newline='', encoding='utf-8') as img_csv_file, \
+     open(f'{logsFolder}to_db_pdf_{date}.csv', 'w', newline='', encoding='utf-8') as pdf_csv_file:
 
     image_writer = csv.writer(img_csv_file)
     pdf_writer = csv.writer(pdf_csv_file)
@@ -174,4 +178,4 @@ with open(f'to_db_{date}.csv', 'w', newline='', encoding='utf-8') as img_csv_fil
         download_image(_system_object_id, image_url, xml_filename, image_writer)
         download_pdf(_system_object_id, pdf_url, xml_filename, pdf_writer)
 
-logger.info(f"Download complete. Lists of downloaded files saved to to_db_{date}.csv and to_db_pdf_{date}.csv")
+logger.info(f"Download complete. Lists of downloaded files saved to {logsFolder}to_db_{date}.csv and {logsFolder}to_db_pdf_{date}.csv")
