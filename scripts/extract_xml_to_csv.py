@@ -73,10 +73,11 @@ def extract_data_from_xml(xml_file):
             download_url = get_download_url_from_versions(preview_versions, "image")
 
         if not download_url:
+            logger.debug(f"!! No valid image download_url found in {xml_file}")
             for version in versions:
                 class_elem = version.find("ns:class", NAMESPACE)
-            logger.warning(f"!! No valid image download_url found in {xml_file}")
-            logger.info(f"!! file type: {class_elem.text.strip()}")
+                if class_elem is not None:
+                    logger.debug(f"!! file type: {class_elem.text.strip()}")
             return None
         
         # Takes the element after the last slash
