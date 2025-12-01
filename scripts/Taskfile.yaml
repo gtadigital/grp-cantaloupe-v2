@@ -99,8 +99,9 @@ tasks:
     desc: "Download and process assets from CSV"
     vars:
       INPUT_FILE: "{{.INPUT_FILE | default \"/data/csv/id_url_table.csv\"}}"
+      METADATA_FOLDER: "{{.METADATA_FOLDER | default \"/data/source/digital_object\"}}"
       OFFSET: "{{.OFFSET | default \"0\"}}"
       LIMIT: "{{.LIMIT | default \"999999\"}}" # default limit in the python script 999999
     cmds:
-      - echo "Using {{.INPUT_FILE}}, offset {{.OFFSET}}, limit {{.LIMIT}}"
-      - python download_assets_grp.py --input-file={{.INPUT_FILE}} --offset={{.OFFSET}} --limit={{.LIMIT}}
+      - echo "Using {{.INPUT_FILE}}, metadata folder {{.METADATA_FOLDER}}, offset {{.OFFSET}}, limit {{.LIMIT}}"
+      - python download_assets_grp.py --input-file={{.INPUT_FILE}} --metadata-dir {{.METADATA_FOLDER}} --offset={{.OFFSET}} --limit={{.LIMIT}}
