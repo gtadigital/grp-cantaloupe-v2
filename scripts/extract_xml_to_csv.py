@@ -1,7 +1,7 @@
 """
 Script to extract identifiers and image download URLs from XML files and save the results to a CSV file.
 
-This script parses XML files in a specified input directory, looks for the `_id` and associated 
+This script parses XML files in a specified input directory, looks for the `_system_object_id` and associated 
 download URL of image files marked as "original", and writes the extracted data into a CSV file 
 named `id_url_table.csv` in the specified output directory.
 
@@ -10,7 +10,7 @@ Note:
     - Only the first valid image version per file is extracted (i.e., version with name='original' and class='image').
 
 Usage:
-    python extract_ids_and_urls.py /path/to/input_dir /path/to/output_dir
+    python extract_system_object_ids_and_urls.py /path/to/input_dir /path/to/output_dir
 
 Arguments:
     - input_dir: Directory containing input XML files.
@@ -18,7 +18,7 @@ Arguments:
 
 CSV Output:
 The script generates a CSV file with the following columns:
-    - _id: Unique identifier extracted from each XML file
+    - _system_object_id: Unique identifier extracted from each XML file
     - image_url: URL of the downloadable image
     - filename: The original XML filename (useful for traceability)
 """
@@ -28,6 +28,9 @@ import os
 import csv
 import xml.etree.ElementTree as ET
 import argparse
+from utils.logger_helper import setup_logger
+
+logger = setup_logger()
 
 # Define the namespace
 # namespace is not defined consistently in all the files
@@ -44,18 +47,18 @@ def get_download_url_from_versions(versions, file_class):
     return None
 
 def extract_data_from_xml(xml_file):
-    """Extract _id and download_url from an XML file."""
+    """Extract _system_object_id and download_url from an XML file."""
     try:
         tree = ET.parse(xml_file)
         root = tree.getroot()
 
-        # Extract _id
-        _id = root.find(".//ns:do_grpm_06/ns:_id", NAMESPACE)
-        if _id is None:
-            print("!! There's no _id", xml_file)
+        # Extract _system_object_id
+        _system_object_id = root.find(".//ns:do_grpm_06/ns:_system_object_id", NAMESPACE)
+        if _system_object_id is None:
+            logger.warning("!! There's no _system_object_id", xml_file)
             return None
 
-        _id = _id.text.strip()
+        _system_object_id = _system_object_id.text.strip()
 
         # Find all <version> elements inside <versions> with @name='original'
         versions = root.findall(".//ns:do_grpm_06/ns:do_digitalobject/ns:files/ns:file/ns:versions/ns:version[@name='original']", NAMESPACE)
@@ -70,16 +73,20 @@ def extract_data_from_xml(xml_file):
             download_url = get_download_url_from_versions(preview_versions, "image")
 
         if not download_url:
-            print(f"!! No valid image download_url found in {xml_file}")
+            logger.debug(f"!! No valid image download_url found in {xml_file}")
+            for version in versions:
+                class_elem = version.find("ns:class", NAMESPACE)
+                if class_elem is not None:
+                    logger.debug(f"!! file type: {class_elem.text.strip()}")
             return None
         
         # Takes the element after the last slash
         filename = xml_file.rsplit('/', 1)[-1]
 
-        return _id, filename, download_url, download_office_url
+        return _system_object_id, filename, download_url, download_office_url
 
     except Exception as e:
-        print(f"Error processing {xml_file}: {e}")
+        logger.error(f"Error processing {xml_file}: {e}")
         return None
 
 
@@ -89,7 +96,7 @@ def process_directory(input_dir, output_dir):
     output_csv = os.path.join(output_dir, filename)
     with open(output_csv, mode="w", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
-        writer.writerow(["_id", "filename", "image_url", "pdf_url"])  # Write header
+        writer.writerow(["_system_object_id", "filename", "image_url", "pdf_url"])  # Write header
 
         for filename in os.listdir(input_dir):
             if filename.endswith(".xml"):
@@ -100,7 +107,7 @@ def process_directory(input_dir, output_dir):
                 if extracted_data:
                     writer.writerow(extracted_data)
 
-    print(f"CSV file saved: {output_csv}")
+    logger.info(f"CSV file saved: {output_csv}")
 
 
 if __name__ == "__main__":

@@ -41,8 +41,10 @@ from datetime import datetime, timezone
 import re
 
 sys.path.append( 'utils' )
-from easydb import Session, start_session, authenticate_session, deauthenticate_session, run_export_pipeline
+from easydb import Session, start_session, authenticate_session, deauthenticate_session, run_export_pipeline, check_for_updates
 from lib.Metadata import ItemMetadata
+from utils.logger_helper import setup_logger
+logger = setup_logger()
 
 EASYDB_URL = 'https://collections.gta.arch.ethz.ch'
 
@@ -81,11 +83,11 @@ def format_all_files(path):
                 paths.remove(subpath.parent)
             paths.append(subpath)
 
-def main(*, login, password, objecttype, base_folder, limit=None, filenamePrefix='item-', downloadWhat='update'):
+def main(*, login, password, objecttype, outputFolder, filenamePrefix='item-', downloadWhat='update'):
     """
     Main function to handle authentication, downloading, formatting, and metadata updates.
     """
-    download_path = sanitize_path(base_folder + objecttype)
+    download_path = sanitize_path(outputFolder)
     
     ezdb = Session(EASYDB_URL)
     start_session(ezdb)
@@ -93,10 +95,7 @@ def main(*, login, password, objecttype, base_folder, limit=None, filenamePrefix
     ezdb._setPassword(password)
     authenticate_session(ezdb)
 
-    print("base_folder:", base_folder)
-    print("path:", download_path)
-
-    metadata = ItemMetadata(base_folder)
+    metadata = ItemMetadata(outputFolder)
 
     # READ DATE FROM THE METADATA FILE
     try:
@@ -106,19 +105,15 @@ def main(*, login, password, objecttype, base_folder, limit=None, filenamePrefix
     
     # Set `lastUpdated` to '1970-01-01 00:00:00.000' if downloadWhat is "all" or if lastUpdated does not exist yet
     if downloadWhat == "all" or lastUpdated is None:
-        lastUpdated = '1970-01-01 00:00:00.000'
-
-    print(f'lastUpdated: {lastUpdated}')
+       lastUpdated = '1970-01-01T00:00:00Z'
+    logger.info(f'Last update module: {lastUpdated}')
     
-    # Store the start time of the download
-    downloadStarted_utc = datetime.now(pytz.utc)
-    downloadStarted = downloadStarted_utc.strftime('%Y-%m-%d %H:%M:%S.000')
-    print(f'downloadStarted: {downloadStarted}')
-    
-    run_export_pipeline(ezdb, objecttype, lastUpdated, download_path, limit, metadata, filenamePrefix)   
-    
-    # Update metadata with the current download start time
-    metadata.setLastUpdated(downloadStarted)
+    there_are_updates = check_for_updates(ezdb, objecttype, lastUpdated)
+    if there_are_updates:
+        run_export_pipeline(ezdb, objecttype, download_path, metadata, filenamePrefix)
+    else:
+        logger.info("No updates found since last download. Exiting.")
+        return
     
     # Deauthenticate the session
     deauthenticate_session(ezdb)
@@ -133,7 +128,7 @@ if __name__ == "__main__":
     parser.add_argument('--login', required=True,help='login email for the EasyDB portal')
     parser.add_argument('--password', required=True,help='password for login on EasyDB portal')
     parser.add_argument('--module',required=True, help='name of the module to download items from')
-    parser.add_argument('--base_folder',required=True, help='base folder')
+    parser.add_argument('--outputFolder',required=True, help='base folder')
     parser.add_argument('--filenamePrefix', required= False, help='Prefix to use for the filenames of the XML files. Defaults to "item-"')
     parser.add_argument('--downloadWhat', required=False, default=None, help='Which data to download ("all", "update", or "sample")')
     
@@ -141,6 +136,6 @@ if __name__ == "__main__":
     login = args.login
     password = args.password
     module = args.module
-    base_folder = args.base_folder
+    outputFolder = args.outputFolder
 
-    main(login=login, password=password, objecttype=module, base_folder=base_folder, filenamePrefix=args.filenamePrefix or 'item-', downloadWhat=args.downloadWhat or "update")
+    main(login=login, password=password, objecttype=module, outputFolder=outputFolder, filenamePrefix=args.filenamePrefix or 'item-', downloadWhat=args.downloadWhat or "update")

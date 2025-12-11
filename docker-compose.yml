@@ -16,8 +16,10 @@ services:
             - ./data:/data
             - ./scripts:/scripts
             - ./assets:/assets
+            - ./logs:/logs
         environment:
             - JAVA_OPTS=-Xms512m -Xmx1024m
             - COMPOSE_PROJECT_NAME=${PROJECT_NAME}
             - LOGIN=${LOGIN}
             - PASSWORD=${PASSWORD}
+            - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
