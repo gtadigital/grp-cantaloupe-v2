@@ -49,3 +49,13 @@ tasks:
       - task: "{{.TASK}}"
       - mkdir -p /scripts/.task/lastrun
       - echo "{{.CURRENT_TIME}}" > /scripts/.task/lastrun/{{.TASK}}
+
+
+  _output_message:
+    internal: true
+    decs: Output a message to the console
+    silent: true
+    requires:
+      vars: [MESSAGE]
+    cmds:
+      - echo "{{.MESSAGE}}"
