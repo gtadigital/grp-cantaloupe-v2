@@ -74,7 +74,7 @@ def download_image(_system_object_id, image_url, xml_filename, writer):
         logger.debug("Image already downloaded for %s: %s", _system_object_id, image_url)
         return
 
-    outputFile = os.path.join(imagesFolder, f'cms-{_system_object_id}.tif')
+    outputFile = os.path.join(imagesFolder, f'{_system_object_id}.tif')
 
     try:
         attempts = 0
@@ -106,7 +106,7 @@ def download_image(_system_object_id, image_url, xml_filename, writer):
             img = Image.open(BytesIO(r.content))
 
         img.save(outputFile, 'TIFF')
-        writer.writerow([f'cms-{_system_object_id}.tif', outputFile])
+        writer.writerow([f'{_system_object_id}.tif', outputFile])
         metadata.setLatestImageDownloadUrlForFile(xml_filename, image_url)
         logger.debug("Saved image for %s to %s", _system_object_id, outputFile)
 
@@ -122,7 +122,7 @@ def download_pdf(_system_object_id, pdf_url, xml_filename, writer):
         logger.debug("PDF already downloaded for %s", _system_object_id)
         return
 
-    output_pdf_File = os.path.join(pdfFolder, f'cms-{_system_object_id}.pdf')
+    output_pdf_File = os.path.join(pdfFolder, f'{_system_object_id}.pdf')
 
     try:
         attempts = 0
@@ -150,7 +150,7 @@ def download_pdf(_system_object_id, pdf_url, xml_filename, writer):
         with open(output_pdf_File, 'wb') as f:
             f.write(r.content)
 
-        writer.writerow([f'cms-{_system_object_id}.pdf', output_pdf_File])
+        writer.writerow([f'{_system_object_id}.pdf', output_pdf_File])
         metadata.setLatestPdfDownloadUrlForFile(xml_filename, pdf_url)
         logger.debug("Saved PDF for %s to %s", _system_object_id, output_pdf_File)
 
