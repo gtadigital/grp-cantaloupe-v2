@@ -15,7 +15,7 @@ tasks:
   default:
     desc: Default task
     cmds:
-      - task: download-all-data # update-data
+      - task: download-all-data # update-data temorarily disabled
       - task: generate-csv
       - task: download-assets
 
